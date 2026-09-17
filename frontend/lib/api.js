@@ -56,3 +56,15 @@ export const addInteraction = (ticketId, data) =>
     });
 export const getTicketStatusHistory = (id) => request(`/tickets/${id}/status-history`);
 export const getTicketRevisions = (id) => request(`/tickets/${id}/revisions`);
+
+export const getTicketNotifications = (id) => request(`/tickets/${id}/notifications`);
+export const sendTicketNotification = (id, data) =>
+    request(`/tickets/${id}/notifications`, { method: "POST", body: JSON.stringify(data) });
+export const getNotificationPreferences = (customerId) =>
+    request(`/customers/${customerId}/notification-preferences`);
+export const updateNotificationPreferences = (customerId, data) =>
+    request(`/customers/${customerId}/notification-preferences`, {
+        method: "PUT",
+        body: JSON.stringify(data),
+    });
+export const getNotificationServiceStatus = () => request("/notifications/status");

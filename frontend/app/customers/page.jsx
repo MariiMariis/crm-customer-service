@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { getCustomers, createCustomer, deleteCustomer } from "@/lib/api";
+import NotificationPreferences from "@/components/NotificationPreferences";
 
 const EMPTY_FORM = { name: "", email: "", phone: "", document: "" };
 
@@ -11,6 +12,7 @@ export default function CustomersPage() {
     const [error, setError] = useState(null);
     const [form, setForm] = useState(EMPTY_FORM);
     const [submitting, setSubmitting] = useState(false);
+    const [preferencesFor, setPreferencesFor] = useState(null);
 
     const loadCustomers = () => {
         setLoading(true);
@@ -56,6 +58,10 @@ export default function CustomersPage() {
             <p className="page-subtitle">Cadastro de clientes atendidos</p>
 
             {error && <div className="error-banner">{error}</div>}
+
+            {preferencesFor && (
+                <NotificationPreferences customer={preferencesFor} onClose={() => setPreferencesFor(null)} />
+            )}
 
             <div className="card">
                 <h2>Novo cliente</h2>
@@ -109,9 +115,14 @@ export default function CustomersPage() {
                                     <td>{c.email}</td>
                                     <td>{c.phone || "-"}</td>
                                     <td>
-                                        <button className="secondary" onClick={() => handleDelete(c.id)}>
-                                            Remover
-                                        </button>
+                                        <div className="actions-row">
+                                            <button className="secondary" onClick={() => setPreferencesFor(c)}>
+                                                Notificacoes
+                                            </button>
+                                            <button className="secondary" onClick={() => handleDelete(c.id)}>
+                                                Remover
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             ))}

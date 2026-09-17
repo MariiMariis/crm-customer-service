@@ -1,6 +1,7 @@
-# --- Backend (Maven / Java) ---
-backend/target/
+# --- Backend / microsservicos (Maven / Java) ---
+target/
 backend/data/
+notification-service/data/
 *.class
 *.log
 
@@ -13,6 +14,7 @@ npm-debug.log*
 
 # --- IDE ---
 .idea/
+!.run/
 *.iml
 *.iws
 out/

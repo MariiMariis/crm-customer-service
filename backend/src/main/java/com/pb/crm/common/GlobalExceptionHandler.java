@@ -1,5 +1,6 @@
 package com.pb.crm.common;
 
+import com.pb.crm.notification.NotificationServiceUnavailableException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
@@ -66,6 +67,12 @@ public class GlobalExceptionHandler {
                 "O registro foi alterado por outra operacao. Recarregue os dados e tente novamente"
         );
         return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
+    }
+
+    @ExceptionHandler(NotificationServiceUnavailableException.class)
+    public ResponseEntity<ApiError> handleNotificationServiceUnavailable(NotificationServiceUnavailableException ex) {
+        ApiError body = ApiError.of(HttpStatus.SERVICE_UNAVAILABLE.value(), "Service Unavailable", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(body);
     }
 
     @ExceptionHandler(Exception.class)

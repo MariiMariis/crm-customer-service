@@ -6,6 +6,7 @@ import com.pb.crm.audit.RevisionResponse;
 import com.pb.crm.common.BusinessRuleException;
 import com.pb.crm.common.PageResponse;
 import com.pb.crm.common.ResourceNotFoundException;
+import com.pb.crm.config.RequestActor;
 import com.pb.crm.customer.Customer;
 import com.pb.crm.customer.CustomerRepository;
 import com.pb.crm.ticket.dto.InteractionRequest;
@@ -14,6 +15,11 @@ import com.pb.crm.ticket.dto.TicketRequest;
 import com.pb.crm.ticket.dto.TicketResponse;
 import com.pb.crm.ticket.dto.TicketStatsResponse;
 import com.pb.crm.ticket.dto.TicketStatusHistoryResponse;
+import com.pb.crm.ticket.event.TicketCreatedEvent;
+import com.pb.crm.ticket.event.TicketInteractionAddedEvent;
+import com.pb.crm.ticket.event.TicketSnapshot;
+import com.pb.crm.ticket.event.TicketStatusChangedEvent;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,15 +35,18 @@ public class TicketServiceImpl implements TicketService {
     private final TicketStatusHistoryRepository statusHistoryRepository;
     private final CustomerRepository customerRepository;
     private final AgentRepository agentRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     public TicketServiceImpl(TicketRepository ticketRepository,
                              TicketStatusHistoryRepository statusHistoryRepository,
                              CustomerRepository customerRepository,
-                             AgentRepository agentRepository) {
+                             AgentRepository agentRepository,
+                             ApplicationEventPublisher eventPublisher) {
         this.ticketRepository = ticketRepository;
         this.statusHistoryRepository = statusHistoryRepository;
         this.customerRepository = customerRepository;
         this.agentRepository = agentRepository;
+        this.eventPublisher = eventPublisher;
     }
 
     @Override
@@ -47,7 +56,9 @@ public class TicketServiceImpl implements TicketService {
                 .orElseThrow(() -> ResourceNotFoundException.forId("Cliente", request.customerId()));
         Agent agent = resolveAgent(request.agentId());
         Ticket ticket = new Ticket(request.subject(), request.description(), request.priority(), customer, agent);
-        return TicketResponse.fromEntity(ticketRepository.save(ticket));
+        Ticket saved = ticketRepository.save(ticket);
+        eventPublisher.publishEvent(new TicketCreatedEvent(TicketSnapshot.from(saved), RequestActor.current()));
+        return TicketResponse.fromEntity(saved);
     }
 
     @Override
@@ -63,8 +74,12 @@ public class TicketServiceImpl implements TicketService {
     @Transactional
     public TicketResponse changeStatus(Long id, TicketStatus status, String reason) {
         Ticket ticket = findEntityById(id);
+        TicketStatus previous = ticket.getStatus();
         ticket.changeStatus(status, reason);
-        return TicketResponse.fromEntity(ticketRepository.saveAndFlush(ticket));
+        Ticket saved = ticketRepository.saveAndFlush(ticket);
+        eventPublisher.publishEvent(new TicketStatusChangedEvent(
+                TicketSnapshot.from(saved), previous, status, reason, RequestActor.current()));
+        return TicketResponse.fromEntity(saved);
     }
 
     @Override
@@ -128,7 +143,9 @@ public class TicketServiceImpl implements TicketService {
     public InteractionResponse addInteraction(Long ticketId, InteractionRequest request) {
         Ticket ticket = findEntityById(ticketId);
         Interaction interaction = ticket.addInteraction(request.author(), request.message());
-        ticketRepository.saveAndFlush(ticket);
+        Ticket saved = ticketRepository.saveAndFlush(ticket);
+        eventPublisher.publishEvent(new TicketInteractionAddedEvent(
+                TicketSnapshot.from(saved), request.author(), request.message(), RequestActor.current()));
         return InteractionResponse.fromEntity(interaction);
     }
 

@@ -8,6 +8,7 @@ const LINKS = [
     { href: "/customers", label: "Clientes" },
     { href: "/agents", label: "Atendentes" },
     { href: "/tickets", label: "Tickets" },
+    { href: "/notifications", label: "Notificacoes" },
 ];
 
 export default function NavBar() {

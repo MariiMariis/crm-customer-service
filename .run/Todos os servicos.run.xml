@@ -1,0 +1,8 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Todos os servicos" type="CompoundRunConfigurationType">
+    <toRun name="Config Server (8888)" type="Application" />
+    <toRun name="Notification Service (8081)" type="Application" />
+    <toRun name="CRM Backend (8080)" type="Application" />
+    <method v="2" />
+  </configuration>
+</component>

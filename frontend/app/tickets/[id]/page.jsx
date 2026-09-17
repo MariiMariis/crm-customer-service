@@ -11,6 +11,7 @@ import {
     getTicketRevisions,
 } from "@/lib/api";
 import Badge from "@/components/Badge";
+import TicketNotifications from "@/components/TicketNotifications";
 
 const STATUS_OPTIONS = ["OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED"];
 
@@ -28,8 +29,10 @@ export default function TicketDetailPage() {
     const [statusReason, setStatusReason] = useState("");
     const [interactionForm, setInteractionForm] = useState({ author: "", message: "" });
     const [submittingInteraction, setSubmittingInteraction] = useState(false);
+    const [notificationsKey, setNotificationsKey] = useState(0);
 
     const loadHistory = () => {
+        setNotificationsKey((k) => k + 1);
         Promise.all([getTicketStatusHistory(id), getTicketRevisions(id)])
             .then(([history, revs]) => {
                 setStatusHistory(history);
@@ -213,6 +216,8 @@ export default function TicketDetailPage() {
                     </form>
                 )}
             </div>
+
+            <TicketNotifications ticketId={id} refreshKey={notificationsKey} disabled={isClosed} />
 
             <div className="card">
                 <h2>Revisoes (auditoria Envers)</h2>

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.pb</groupId>
+    <artifactId>pb-crm-platform</artifactId>
+    <version>0.3.0</version>
+    <packaging>pom</packaging>
+    <name>pb-crm-platform</name>
+    <description>Plataforma CRM de Customer Service - monolito, microsservico de notificacoes e config server (Etapa 3)</description>
+
+    <modules>
+        <module>config-server</module>
+        <module>notification-service</module>
+        <module>backend</module>
+    </modules>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.compiler.release>21</maven.compiler.release>
+    </properties>
+</project>

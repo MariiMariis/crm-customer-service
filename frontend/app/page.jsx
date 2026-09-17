@@ -3,7 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { getCustomers, getAgents, getTickets } from "@/lib/api";
+import { getNotificationStats } from "@/lib/notificationApi";
 import Badge from "@/components/Badge";
+import ServiceStatus from "@/components/ServiceStatus";
 
 export default function DashboardPage() {
     const [loading, setLoading] = useState(true);
@@ -11,6 +13,7 @@ export default function DashboardPage() {
     const [customers, setCustomers] = useState([]);
     const [agents, setAgents] = useState([]);
     const [tickets, setTickets] = useState([]);
+    const [notificationStats, setNotificationStats] = useState(null);
 
     useEffect(() => {
         Promise.all([getCustomers(), getAgents(), getTickets()])
@@ -21,6 +24,9 @@ export default function DashboardPage() {
             })
             .catch((err) => setError(err.message))
             .finally(() => setLoading(false));
+        getNotificationStats()
+            .then(setNotificationStats)
+            .catch(() => setNotificationStats(null));
     }, []);
 
     const openCount = tickets.filter((t) => t.status === "OPEN").length;
@@ -61,7 +67,17 @@ export default function DashboardPage() {
                             <div className="stat-value">{inProgressCount}</div>
                             <div className="stat-label">Em andamento</div>
                         </div>
+                        <div className="stat-card stat-card-accent">
+                            <div className="stat-value">{notificationStats ? notificationStats.byStatus.PENDING : "-"}</div>
+                            <div className="stat-label">Notificacoes pendentes</div>
+                        </div>
+                        <div className="stat-card stat-card-accent">
+                            <div className="stat-value">{notificationStats ? notificationStats.byStatus.SENT : "-"}</div>
+                            <div className="stat-label">Notificacoes enviadas</div>
+                        </div>
                     </div>
+
+                    <ServiceStatus />
 
                     <div className="card">
                         <h2>Tickets recentes</h2>

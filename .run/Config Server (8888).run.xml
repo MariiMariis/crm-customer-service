@@ -1,0 +1,16 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Config Server (8888)" type="Application" factoryName="Application">
+    <option name="MAIN_CLASS_NAME" value="com.pb.configserver.ConfigServerApplication" />
+    <module name="config-server" />
+    <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/config-server" />
+    <extension name="coverage">
+      <pattern>
+        <option name="PATTERN" value="com.pb.configserver.*" />
+        <option name="ENABLED" value="true" />
+      </pattern>
+    </extension>
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>

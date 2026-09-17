@@ -271,3 +271,76 @@ button.danger {
     gap: 8px;
     align-items: center;
 }
+
+.badge-PENDING { background: #fff4e0; color: #a15c00; }
+.badge-SENT { background: #e4f7ea; color: #1a7f3c; }
+.badge-FAILED { background: #fde8e8; color: var(--color-danger); }
+.badge-SKIPPED { background: #eceef1; color: var(--color-text-muted); }
+
+.badge-EMAIL { background: #e7f0ff; color: var(--color-primary-dark); }
+.badge-SMS { background: #f1e8fd; color: #6b21a8; }
+.badge-IN_APP { background: #e0f4f7; color: #0e6b7a; }
+
+.stat-card-accent {
+    border-left: 4px solid var(--color-primary);
+}
+
+.service-status {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding: 10px 14px;
+    border-radius: 6px;
+    margin-bottom: 24px;
+    font-size: 0.9rem;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+}
+
+.service-status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 999px;
+    background: var(--color-text-muted);
+}
+
+.service-status-up { border-color: #b7e4c7; background: #f0fbf4; }
+.service-status-up .service-status-dot { background: #1a7f3c; }
+.service-status-down { border-color: #f5c2c7; background: #fff5f5; }
+.service-status-down .service-status-dot { background: var(--color-danger); }
+.service-status-disabled { border-color: #e2e5ea; background: #f7f8fa; }
+
+.service-status-meta {
+    color: var(--color-text-muted);
+    font-size: 0.82rem;
+}
+
+.service-status-refresh {
+    margin-left: auto;
+    padding: 4px 10px;
+    font-size: 0.8rem;
+}
+
+.preferences-card {
+    border-left: 4px solid var(--color-primary);
+}
+
+.checkbox-field {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.92rem;
+    padding: 8px 12px;
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    background: #fafbfc;
+    cursor: pointer;
+}
+
+code {
+    background: #eceef1;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 0.85em;
+}
