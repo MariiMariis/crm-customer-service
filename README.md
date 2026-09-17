@@ -5,10 +5,8 @@ com **Spring Boot** (back-end) e **Next.js/React** (front-end), organizada em
 camadas (controller/service/repository) e por bounded contexts de
 Domain-Driven Design (Customer, Agent, Ticket).
 
-A arquitetura da Etapa 1 (componentes e sequência) está em
-[docs/ARQUITETURA.md](docs/ARQUITETURA.md). A **Etapa 2 (branch `TP2`)**, que
-introduz a camada de persistência real com JPA, Spring Data e histórico de
-dados, está documentada integralmente na seção
+A **Etapa 2 (branch `TP2`)**, que introduz a camada de persistência real com
+JPA, Spring Data e histórico de dados, está documentada integralmente na seção
 [Camada de persistência (Etapa 2)](#camada-de-persistência-etapa-2) deste
 README.
 
@@ -34,8 +32,7 @@ crm-customer-service/
 │       ├── customer/   # bounded context Cliente
 │       ├── agent/      # bounded context Atendente
 │       └── ticket/     # bounded context Ticket (agregado com interações e histórico)
-├── frontend/    # Aplicação React (Next.js) que consome a API
-└── docs/        # Documentação de arquitetura (Etapa 1)
+└── frontend/    # Aplicação React (Next.js) que consome a API
 ```
 
 ## Pré-requisitos
