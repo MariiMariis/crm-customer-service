@@ -1,76 +1,71 @@
-# CRM de Customer Service — Monólito Spring Boot + Microsserviço de Notificações (Spring Cloud) + React
+# CRM de Customer Service — Etapa 3 (TP3): Microsserviço de Notificações com Spring Boot + Spring Cloud
 
-Aplicação de atendimento ao cliente (CRM) desenvolvida como monólito
-**Spring Boot** (back-end) com front-end **Next.js/React**, organizada em
-camadas (controller/service/repository) e por bounded contexts de
-Domain-Driven Design (Customer, Agent, Ticket). Na Etapa 3 o sistema passa a
-ser **distribuído**: um novo **microsserviço de notificações** (Spring Boot +
-Spring Cloud), com banco de dados próprio, é integrado ao monólito e à
-interface.
+Este README descreve **somente o que mudou na Etapa 3**. A documentação do
+monólito (bounded contexts, camada de persistência JPA/Spring Data, auditoria
+Envers, endpoints de clientes/atendentes/tickets e testes das etapas
+anteriores) está no README da tag **`tp2`** / branch **`TP2`**:
+<https://github.com/MariiMariis/crm-customer-service/blob/TP2/README.md>.
 
-| Etapa | Branch / tag | Documentação |
-|---|---|---|
-| Etapa 2 — camada de persistência (JPA, Spring Data, Envers) | `TP2` / `tp2` | [Camada de persistência (Etapa 2)](#camada-de-persistência-etapa-2) |
-| Etapa 3 — microsserviço de notificações (Spring Boot + Spring Cloud) | `TP3` / `TP3` | [Microsserviço de notificações (Etapa 3)](#microsserviço-de-notificações-etapa-3) |
+## O que muda nesta versão
 
-## Stack
-
-| Camada | Tecnologia |
+| Mudança | Onde |
 |---|---|
-| Monólito (`backend`) | Java 21, Spring Boot 3.3 (Web, Data JPA, Validation, Actuator), Spring Data Envers, Hibernate Envers, H2 (arquivo), Maven |
-| Microsserviço (`notification-service`) | Java 21, Spring Boot 3.3 (Web, Data JPA, Validation, Actuator, Scheduling), H2 dedicado (arquivo), Spring Cloud Config Client |
-| Config Server (`config-server`) | Spring Cloud Config Server (perfil `native`) |
-| Comunicação distribuída | Spring Cloud 2023.0.3: OpenFeign, LoadBalancer + SimpleDiscoveryClient, Circuit Breaker (Resilience4j), Config |
-| Front-end | Next.js 16 (App Router), React 18, JavaScript |
-| Testes | JUnit 5, Spring Boot Test (`@DataJpaTest`, `@SpringBootTest`, MockMvc, `@MockBean`), Mockito, AssertJ |
-| Documentação | Markdown + diagramas Mermaid |
+| **Novo microsserviço `notification-service`** (porta 8081): registra, aplica preferências, despacha e consulta notificações ao cliente; banco H2 **próprio** | `notification-service/` |
+| **Novo `config-server`** (porta 8888): Spring Cloud Config Server com as propriedades centralizadas dos dois serviços | `config-server/` |
+| **Monólito integrado via Spring Cloud**: eventos de domínio do ticket, listener pós-commit, cliente OpenFeign resolvido por nome lógico (LoadBalancer + SimpleDiscoveryClient), circuit breaker Resilience4j, Config Client | `backend/src/main/java/com/pb/crm/notification/`, `backend/src/main/java/com/pb/crm/ticket/event/`, `TicketServiceImpl`, `GlobalExceptionHandler` (503) |
+| **Novos endpoints REST no monólito** para acesso ao microsserviço | `NotificationController` (`/api/tickets/{id}/notifications`, `/api/customers/{id}/notification-preferences`, `/api/notifications/status`) |
+| **Novos componentes de interface**: página Notificações, painel de notificações no ticket, preferências por cliente, indicador de saúde do microsserviço | `frontend/app/notifications/`, `frontend/components/{TicketNotifications,NotificationPreferences,ServiceStatus}.jsx`, `frontend/lib/notificationApi.js` |
+| **Build multi-módulo** (`pom.xml` agregador na raiz, Maven Wrapper na raiz) e **run configurations do IntelliJ** (`.run/`) para subir os três serviços | raiz do repositório |
+| **Novos testes**: 29 no microsserviço, 3 no config server, 17 no monólito (eventos, gateway, circuit breaker, API) | `*/src/test` |
 
-## Estrutura do repositório
+Versões dos módulos passam a **0.3.0**. Spring Cloud **2023.0.3** (compatível
+com Spring Boot 3.3.4).
+
+## Estrutura adicionada
 
 ```
 crm-customer-service/
-├── pom.xml                  # agregador Maven: abre os 3 módulos de uma vez no IntelliJ
-├── .run/                    # run configurations compartilhadas do IntelliJ (um clique por serviço)
-├── config-server/           # Spring Cloud Config Server (porta 8888) — configuração centralizada
+├── pom.xml                  # NOVO: agregador Maven (config-server, notification-service, backend)
+├── mvnw / mvnw.cmd          # NOVO: Maven Wrapper na raiz
+├── .run/                    # NOVO: run configurations do IntelliJ (um clique por serviço + composta)
+├── config-server/           # NOVO: Spring Cloud Config Server (8888)
 │   └── src/main/resources/config/   # application / crm-customer-service / notification-service .properties
-├── notification-service/    # MICROSSERVIÇO de notificações (porta 8081) — banco H2 próprio
-│   ├── data/                # notificationdb (gerado em runtime, ignorado pelo Git)
+├── notification-service/    # NOVO: microsserviço de notificações (8081)
+│   ├── data/                # notificationdb (H2 em arquivo, gerado em runtime, ignorado pelo Git)
 │   └── src/main/java/com/pb/notification/
 │       ├── config/          # NotificationProperties, PersistenceConfig (auditing + scheduling), CORS
-│       ├── common/          # exceções e handler global
-│       ├── notification/    # agregado Notification, repositório, serviço, dispatcher, API REST
-│       └── preference/      # preferências de notificação por cliente (entidade, repositório, API)
-├── backend/                 # MONÓLITO (porta 8080)
-│   ├── data/                # crmdb (gerado em runtime, ignorado pelo Git)
+│       ├── common/          # ApiError, exceções, handler global
+│       ├── notification/    # agregado Notification, repositório, Specifications, serviço, dispatcher, sender, API
+│       └── preference/      # NotificationPreference, repositório, serviço, API
+├── backend/                 # monólito (8080) — alterações:
 │   └── src/main/java/com/pb/crm/
-│       ├── audit/  config/  common/  customer/  agent/
-│       ├── ticket/          # agregado Ticket + ticket/event (eventos de domínio publicados pelo serviço)
-│       └── notification/    # NOVO: Feign client, gateway resiliente, listener de eventos, endpoints de integração
-└── frontend/                # Next.js: consome o monólito (8080) e o microsserviço (8081)
+│       ├── notification/    # NOVO: NotificationClient (Feign), FeignNotificationGateway, TicketNotificationListener,
+│       │                    #       NotificationComposer, TicketNotificationService, NotificationController, DTOs
+│       └── ticket/event/    # NOVO: TicketSnapshot, TicketCreatedEvent, TicketStatusChangedEvent, TicketInteractionAddedEvent
+└── frontend/                # alterações: página Notificações, novos componentes, lib/notificationApi.js
 ```
 
 ## Pré-requisitos
 
-- **Java 21** (JDK) — os três módulos Spring compilam com `release 21`
-- **IntelliJ IDEA** (Community ou Ultimate) — abra a **pasta raiz** do
+- **Java 21** (JDK) — os três módulos compilam com `release 21`
+- **IntelliJ IDEA** (Community ou Ultimate) — abrir a **pasta raiz** do
   repositório; o `pom.xml` agregador importa os módulos `config-server`,
   `notification-service` e `crm-customer-service` (backend)
 - **Node.js 18+** e **npm** — para o front-end
 
-Não é necessário instalar o Maven manualmente: o projeto inclui o **Maven
-Wrapper** na raiz (`mvnw` / `mvnw.cmd`) e em `backend/`, e o IntelliJ também
-traz um Maven embutido.
+Não é necessário instalar o Maven: use o Maven Wrapper (`mvnw` / `mvnw.cmd`)
+ou o Maven embutido do IntelliJ.
 
 ## Como executar
 
-A ordem recomendada é **Config Server → microsserviço → monólito →
-front-end**. O Config Server é opcional: se não estiver rodando, cada serviço
-usa o seu `application.properties` local (import `optional:configserver:`).
+Ordem recomendada: **Config Server → microsserviço → monólito → front-end**.
+O Config Server é opcional: sem ele, cada serviço usa seu
+`application.properties` local (import `optional:configserver:`).
 
 ### No IntelliJ (recomendado)
 
-1. `File > Open` na pasta raiz `crm-customer-service/`. O IntelliJ detecta o
-   `pom.xml` agregador e importa os três módulos Maven.
+1. `File > Open` na pasta raiz `crm-customer-service/`; o IntelliJ importa os
+   três módulos Maven.
 2. Em `Project Structure > SDK`, selecione um **JDK 21**.
 3. No seletor de run configurations aparecem as configurações compartilhadas
    da pasta `.run/`:
@@ -78,619 +73,54 @@ usa o seu `application.properties` local (import `optional:configserver:`).
    - **Notification Service (8081)**
    - **CRM Backend (8080)**
    - **Todos os servicos** — configuração composta que sobe os três de uma vez.
-4. Rode **Todos os servicos** (▶) e, depois, o front-end (abaixo).
+4. Rode **Todos os servicos** (▶) e, depois, o front-end.
 
-Cada configuração define o *working directory* do módulo correspondente, para
-que os bancos H2 sejam criados em `backend/data/` e
-`notification-service/data/`.
+Cada configuração define o *working directory* do módulo, para que os bancos
+H2 fiquem em `backend/data/` e `notification-service/data/`.
 
 ### Via terminal
 
 ```bash
-# na raiz do repositório (Linux/macOS: ./mvnw ; Windows: mvnw.cmd)
-mvnw.cmd -q -f config-server/pom.xml spring-boot:run          # 1) porta 8888 (opcional)
-mvnw.cmd -q -f notification-service/pom.xml spring-boot:run   # 2) porta 8081
-mvnw.cmd -q -f backend/pom.xml spring-boot:run                # 3) porta 8080
+# na raiz do repositório (Linux/macOS: ./mvnw ; Windows: mvnw.cmd), um terminal por serviço
+mvnw.cmd -q -f config-server/pom.xml spring-boot:run          # 1) 8888 (opcional)
+mvnw.cmd -q -f notification-service/pom.xml spring-boot:run   # 2) 8081
+mvnw.cmd -q -f backend/pom.xml spring-boot:run                # 3) 8080
+
+cd frontend && npm install && npm run dev                     # 4) 3000
 ```
 
-Cada comando em um terminal próprio. Para compilar e testar tudo de uma vez:
+Compilar e testar tudo de uma vez: `mvnw.cmd verify` (raiz).
 
-```bash
-mvnw.cmd verify
-```
+### Portas, bancos e observabilidade
 
-### 1. Back-end / monólito (porta 8080)
+| Serviço | Porta | Banco | Endpoints úteis |
+|---|---|---|---|
+| `config-server` | 8888 | — | `GET /notification-service/default`, `GET /crm-customer-service/default`, `/actuator/health` |
+| `notification-service` | 8081 | `notification-service/data/notificationdb` (console `/h2-console`, JDBC `jdbc:h2:file:./data/notificationdb`, `sa`, sem senha) | `/api/notifications`, `/api/notification-preferences/{customerId}`, `/actuator/health`, `/actuator/info`, `/actuator/env/{prop}` |
+| `backend` (monólito) | 8080 | `backend/data/crmdb` (inalterado) | novos: `/api/tickets/{id}/notifications`, `/api/customers/{id}/notification-preferences`, `/api/notifications/status`; `/actuator/health` (inclui `circuitBreakers` e `clientConfigServer`) |
+| `frontend` | 3000 | — | `NEXT_PUBLIC_API_URL` (8080) e **novo** `NEXT_PUBLIC_NOTIFICATION_API_URL` (8081), ver `frontend/.env.local.example` |
 
-Classe principal: `com.pb.crm.CrmCustomerServiceApplication`
-(run configuration **CRM Backend (8080)**).
-
-A API sobe em `http://localhost:8080`. Health check com o estado da integração:
-`http://localhost:8080/actuator/health` (inclui `circuitBreakers` e
-`clientConfigServer`).
-
-O banco H2 é criado em **`backend/data/crmdb.mv.db`** na primeira execução e
-os dados **persistem entre reinícios**. Na primeira subida (banco vazio) o
-`DataSeeder` carrega clientes, atendentes e tickets de exemplo, já com
-histórico de status e revisões. Para começar do zero, pare a aplicação e apague
-a pasta `backend/data/`. Para subir sem carga inicial, use
-`app.seed.enabled=false`.
-
-Console H2: `http://localhost:8080/h2-console` (JDBC URL
-`jdbc:h2:file:./data/crmdb`, usuário `sa`, sem senha). Além das tabelas de
-negócio, é possível inspecionar as tabelas de auditoria `*_AUD`, `REVINFO` e
-`TICKET_STATUS_HISTORY`.
-
-> **Windows:** a aplicação define `jdk.net.unixdomain.tmpdir` para
-> `%SystemRoot%\Temp` ao iniciar, contornando uma falha do JDK ao abrir o
-> loopback do NIO em alguns perfis de usuário ("Unable to establish loopback
-> connection"). Se preferir, defina a propriedade nas opções de VM do IntelliJ.
-
-#### Endpoints
-
-Cabeçalho opcional em qualquer requisição: `X-Actor: <nome>` — identifica quem
-está operando; é gravado em `created_by`/`updated_by`, no histórico de status e
-nas revisões Envers (padrão: `system`).
-
-| Recurso | Endpoints |
-|---|---|
-| Clientes | `GET/POST /api/customers`, `GET/PUT/DELETE /api/customers/{id}`, `GET /api/customers/search?q=&page=&size=&sort=`, `GET /api/customers/{id}/revisions` |
-| Atendentes | `GET/POST /api/agents` (`?active=true`), `GET/PUT/DELETE /api/agents/{id}`, `GET /api/agents/{id}/revisions` |
-| Tickets | `GET /api/tickets` (`?status=&customerId=`), `POST /api/tickets`, `GET/PUT/DELETE /api/tickets/{id}`, `PATCH /api/tickets/{id}/status` (`{"status","reason"}`), `POST /api/tickets/{id}/interactions` |
-| Consultas de tickets | `GET /api/tickets/search?status=&priority=&customerId=&agentId=&subject=&createdFrom=&createdTo=&page=&size=&sort=`, `GET /api/tickets/stats` |
-| Histórico | `GET /api/tickets/{id}/status-history`, `GET /api/tickets/{id}/revisions` |
-| **Notificações (Etapa 3, via microsserviço)** | `GET/POST /api/tickets/{id}/notifications`, `GET/PUT /api/customers/{id}/notification-preferences`, `GET /api/notifications/status` — detalhes em [Novos endpoints do monólito](#novos-endpoints-do-monólito) |
-
-Respostas de erro: `404` (não encontrado), `400` (validação/parâmetro
-inválido), `409` (regra de negócio, duplicidade, vínculo de integridade ou
-conflito de versão), `503` (microsserviço de notificações indisponível ou
-circuit breaker aberto).
-
-Exemplo com `curl`:
-
-```bash
-curl -X PATCH http://localhost:8080/api/tickets/1/status \
-  -H "Content-Type: application/json" -H "X-Actor: maria" \
-  -d '{"status":"RESOLVED","reason":"cliente confirmou a solucao"}'
-
-curl http://localhost:8080/api/tickets/1/status-history
-curl http://localhost:8080/api/tickets/1/revisions
-```
-
-### 2. Microsserviço de notificações (porta 8081)
-
-Classe principal: `com.pb.notification.NotificationServiceApplication`
-(run configuration **Notification Service (8081)**).
-
-A API sobe em `http://localhost:8081/api/notifications`. O banco H2 dedicado
-é criado em **`notification-service/data/notificationdb.mv.db`** (console:
-`http://localhost:8081/h2-console`, JDBC URL `jdbc:h2:file:./data/notificationdb`,
-usuário `sa`, sem senha). Health/info: `http://localhost:8081/actuator/health`
-e `/actuator/info`; a origem de cada propriedade pode ser inspecionada em
-`/actuator/env/<propriedade>` (ex.: `/actuator/env/app.notifications.dispatch.fixed-delay`
-mostra `configserver:classpath:/config/notification-service.properties` quando
-o Config Server está ativo).
-
-Um *dispatcher* agendado (`app.notifications.dispatch.fixed-delay`, padrão 5 s)
-processa as notificações pendentes e registra o envio simulado no log:
+O *dispatcher* do microsserviço (`app.notifications.dispatch.fixed-delay`,
+padrão 5 s) processa as notificações pendentes e registra o envio simulado no
+log:
 
 ```
 [EMAIL] de PB CRM Customer Service <no-reply@pbcrm.com> para Ana Souza <ana.souza@empresa1.com> | ticket #1552 | Ticket #1552 aberto: ...
 ```
 
-### 3. Config Server (porta 8888, opcional)
+> Se o microsserviço estiver fora do ar, o monólito continua funcionando e a
+> interface mostra "Microsservico de notificacoes offline".
 
-Classe principal: `com.pb.configserver.ConfigServerApplication`
-(run configuration **Config Server (8888)**). Serve as propriedades de
-`config-server/src/main/resources/config/` para os dois serviços:
-
-```bash
-curl http://localhost:8888/notification-service/default
-curl http://localhost:8888/crm-customer-service/default
-```
-
-Se o Config Server não estiver rodando, os serviços iniciam normalmente com
-as propriedades locais (o import é `optional:`) — apenas registram um aviso.
-
-### 4. Front-end (porta 3000)
+### Testes
 
 ```bash
-cd frontend
-npm install
-npm run dev
-```
-
-Acesse `http://localhost:3000`. O front-end espera o monólito em
-`http://localhost:8080/api` (`NEXT_PUBLIC_API_URL`) e o microsserviço em
-`http://localhost:8081/api` (`NEXT_PUBLIC_NOTIFICATION_API_URL`); veja
-`frontend/.env.local.example`. O nome enviado no cabeçalho `X-Actor` pode ser
-alterado com `NEXT_PUBLIC_ACTOR`.
-
-Além das telas da Etapa 2 (linha do tempo de status e revisões de auditoria
-no ticket), a interface ganhou a página **Notificações**, o painel de
-notificações no detalhe do ticket, as preferências de notificação por cliente
-e o indicador de saúde do microsserviço no dashboard — ver
-[Componentes de front-end](#componentes-de-front-end).
-
-> Rode os serviços Spring **antes** do front-end para que o dashboard e as
-> listagens carreguem os dados corretamente. Se o microsserviço estiver fora
-> do ar, o monólito continua funcionando e a interface mostra o aviso
-> "Microsservico de notificacoes offline".
-
-### 5. Testes automatizados
-
-```bash
-mvnw.cmd test                                   # raiz: config-server + notification-service + backend
+mvnw.cmd test                                      # raiz: config-server + notification-service + backend
 mvnw.cmd -q -f notification-service/pom.xml test   # somente o microsserviço
 mvnw.cmd -q -f backend/pom.xml test                # somente o monólito
 ```
 
-(Linux/macOS: `./mvnw`.) Os testes usam o perfil `test` (H2 em memória,
-Config Client desabilitado) e cobrem, no monólito, repositórios, auditoria,
-lock otimista, regras do agregado, a API REST e a integração com o
-microsserviço (eventos, gateway resiliente, circuit breaker, endpoints); no
-microsserviço, domínio, repositórios, serviço, dispatcher e API. Detalhes em
-[Testes automatizados](#testes-automatizados) (Etapa 2) e
-[Testes da Etapa 3](#testes-da-etapa-3).
-
----
-
-## Camada de persistência (Etapa 2)
-
-Esta seção descreve o design da camada de persistência do CRM, construída com
-**JPA (Hibernate 6.5)**, **Spring Data JPA**, **Spring Data Envers** e
-**Hibernate Envers** sobre **H2** em modo arquivo. Cobre: modelo de dados,
-decisões de mapeamento, repositórios e exemplos de uso, gerenciamento de
-transações/integridade/performance, histórico de mudanças (auditoria) e a
-estratégia de testes.
-
-### Visão geral
-
-```
-┌────────────────────────────────────────────────────────────────────────┐
-│  Controllers (REST)  →  Services (@Transactional)  →  Repositories     │
-│                                                          │             │
-│                       Spring Data JPA + Envers ──────────┤             │
-│                                                          ▼             │
-│                       Hibernate ORM (JPA)  ──►  H2 (./data/crmdb)      │
-│                          │                                             │
-│                          ├─ AuditingEntityListener (created/updated)   │
-│                          └─ Envers (tabelas *_aud + revinfo)           │
-└────────────────────────────────────────────────────────────────────────┘
-```
-
-Princípios adotados:
-
-| Princípio | Como foi aplicado |
-|---|---|
-| Isolamento de domínio | Um pacote por bounded context (`customer`, `agent`, `ticket`), cada um com entidade, repositório, serviço, controller e DTOs. Apenas o contexto de **Ticket** referencia os outros dois, e somente para leitura (associações `@ManyToOne`), nunca para alterá-los. |
-| Modelagem orientada à consulta | Índices declarados para os filtros mais usados (`status`, `priority+status`, `customer_id`, `agent_id`, `created_at`), `@EntityGraph` e `join fetch` para evitar N+1, projeções para agregações. |
-| Integridade | Chaves estrangeiras nomeadas, `unique constraints`, `@Version` (lock otimista), regras de transição de status no agregado `Ticket`, exceções traduzidas para HTTP 409. |
-| Rastreabilidade | Dois níveis de histórico: **Envers** (foto de cada entidade a cada transação) e **`ticket_status_history`** (linha do tempo de status do ticket, legível para o negócio). |
-
-
-### Modelo de dados
-
-#### Diagrama entidade-relacionamento
-
-```mermaid
-erDiagram
-    CUSTOMERS ||--o{ TICKETS : "abre"
-    AGENTS ||--o{ TICKETS : "atende"
-    TICKETS ||--o{ INTERACTIONS : "possui"
-    TICKETS ||--o{ TICKET_STATUS_HISTORY : "registra"
-    REVINFO ||--o{ CUSTOMERS_AUD : "versiona"
-    REVINFO ||--o{ AGENTS_AUD : "versiona"
-    REVINFO ||--o{ TICKETS_AUD : "versiona"
-    REVINFO ||--o{ INTERACTIONS_AUD : "versiona"
-
-    CUSTOMERS {
-        bigint id PK
-        varchar name
-        varchar email UK
-        varchar phone
-        varchar document UK
-        timestamp created_at
-        timestamp updated_at
-        varchar created_by
-        varchar updated_by
-        bigint version
-    }
-    AGENTS {
-        bigint id PK
-        varchar name
-        varchar email UK
-        varchar department
-        boolean active
-        timestamp created_at
-        timestamp updated_at
-        varchar created_by
-        varchar updated_by
-        bigint version
-    }
-    TICKETS {
-        bigint id PK
-        varchar subject
-        varchar description
-        varchar status
-        varchar priority
-        bigint customer_id FK
-        bigint agent_id FK
-        timestamp resolved_at
-        timestamp closed_at
-        timestamp created_at
-        timestamp updated_at
-        varchar created_by
-        varchar updated_by
-        bigint version
-    }
-    INTERACTIONS {
-        bigint id PK
-        bigint ticket_id FK
-        varchar author
-        varchar message
-        timestamp created_at
-    }
-    TICKET_STATUS_HISTORY {
-        bigint id PK
-        bigint ticket_id FK
-        varchar from_status
-        varchar to_status
-        varchar reason
-        varchar changed_by
-        timestamp changed_at
-    }
-    REVINFO {
-        int rev PK
-        bigint revtstmp
-        varchar actor
-    }
-```
-
-#### Entidades e anotações JPA utilizadas
-
-| Entidade | Tabela | Principais anotações |
-|---|---|---|
-| `AuditableEntity` (`@MappedSuperclass`) | — | `@CreatedDate`, `@LastModifiedDate`, `@CreatedBy`, `@LastModifiedBy`, `@Version`, `@EntityListeners(AuditingEntityListener)` |
-| `Customer` | `customers` | `@Entity`, `@Table(uniqueConstraints, indexes)`, `@SequenceGenerator`, `@Audited`, `@AuditOverride` |
-| `Agent` | `agents` | idem, índices em `department` e `active` |
-| `Ticket` (raiz de agregado) | `tickets` | `@ManyToOne(LAZY)` para `Customer` e `Agent` com `@JoinColumn(foreignKey)`, `@OneToMany(mappedBy, cascade = ALL, orphanRemoval = true)` para interações e histórico, `@Enumerated(STRING)`, `@OrderBy`, `@NotAudited` na coleção de histórico |
-| `Interaction` | `interactions` | `@ManyToOne(LAZY, optional = false)`, `@CreatedDate`, `@Audited` |
-| `TicketStatusHistory` | `ticket_status_history` | `@ManyToOne(LAZY)`, `@CreatedBy`, `@CreatedDate`, índices por ticket e por status destino |
-| `CrmRevisionEntity` | `revinfo` | `@RevisionEntity(CrmRevisionListener)`, `@RevisionNumber`, `@RevisionTimestamp`, coluna extra `actor` |
-
-Decisões de mapeamento:
-
-* **Geração de IDs por sequência** (`allocationSize = 50`): permite ao Hibernate
-  reservar blocos de IDs e usar *batch inserts* (`hibernate.jdbc.batch_size=20`,
-  `order_inserts/order_updates`), o que não é possível com `IDENTITY`.
-* **Associações LAZY em todas as `@ManyToOne`**: o carregamento é decidido por
-  consulta (`@EntityGraph`, `join fetch`, Specification com `fetch`), nunca
-  implicitamente. `hibernate.default_batch_fetch_size=20` atua como rede de
-  segurança contra N+1 em caminhos não otimizados.
-* **`spring.jpa.open-in-view=false`**: sessões abertas apenas dentro das
-  transações dos serviços; DTOs são montados dentro da transação.
-* **Normalização no domínio**: e-mail em minúsculas e campos vazios convertidos
-  para `null` dentro das entidades, garantindo que as *unique constraints*
-  (`uk_customers_email`, `uk_customers_document`, `uk_agents_email`) tenham
-  efeito e que vários clientes possam existir sem documento.
-* **Agregado `Ticket`**: `Interaction` e `TicketStatusHistory` só existem por
-  meio do ticket (`cascade = ALL`, `orphanRemoval = true`) e seus construtores
-  são *package-private*; toda mudança de estado passa por métodos do agregado
-  (`changeStatus`, `addInteraction`, `update`), que aplicam as regras de negócio.
-
-#### Máquina de estados do ticket
-
-```mermaid
-stateDiagram-v2
-    [*] --> OPEN
-    OPEN --> IN_PROGRESS
-    OPEN --> RESOLVED
-    OPEN --> CLOSED
-    IN_PROGRESS --> OPEN
-    IN_PROGRESS --> RESOLVED
-    IN_PROGRESS --> CLOSED
-    RESOLVED --> IN_PROGRESS
-    RESOLVED --> CLOSED
-    CLOSED --> [*]
-```
-
-* `TicketStatus.canTransitionTo` define as transições permitidas; transições
-  inválidas ou repetidas lançam `BusinessRuleException` (HTTP 409).
-* `RESOLVED` preenche `resolved_at`; `CLOSED` preenche `closed_at`; reabrir
-  limpa ambos.
-* Ticket `CLOSED` é terminal: não aceita edição nem novas interações.
-* Cada transição gera uma linha em `ticket_status_history` (com `from`, `to`,
-  `reason`, `changed_by`, `changed_at`), inclusive a abertura (`null → OPEN`).
-
-
-### Repositórios Spring Data
-
-Todos os repositórios estendem `JpaRepository`; os das entidades auditadas
-também estendem `RevisionRepository<T, Long, Integer>` (Spring Data Envers),
-habilitado por `EnversRevisionRepositoryFactoryBean` em `PersistenceConfig`.
-
-#### `CustomerRepository`
-
-```java
-public interface CustomerRepository extends JpaRepository<Customer, Long>,
-        RevisionRepository<Customer, Long, Integer> {
-
-    Optional<Customer> findByEmailIgnoreCase(String email);
-    boolean existsByEmailIgnoreCase(String email);
-    boolean existsByEmailIgnoreCaseAndIdNot(String email, Long id);
-    boolean existsByDocument(String document);
-    boolean existsByDocumentAndIdNot(String document, Long id);
-    List<Customer> findAllByOrderByNameAsc();
-    Page<Customer> findByNameContainingIgnoreCase(String name, Pageable pageable);
-
-    @Query("""
-            select c from Customer c
-            where lower(c.name) like lower(concat('%', :term, '%'))
-               or lower(c.email) like lower(concat('%', :term, '%'))
-               or c.document = :term
-            """)
-    Page<Customer> search(@Param("term") String term, Pageable pageable);
-}
-```
-
-#### `AgentRepository`
-
-```java
-public interface AgentRepository extends JpaRepository<Agent, Long>,
-        RevisionRepository<Agent, Long, Integer> {
-
-    boolean existsByEmailIgnoreCase(String email);
-    boolean existsByEmailIgnoreCaseAndIdNot(String email, Long id);
-    List<Agent> findAllByOrderByNameAsc();
-    List<Agent> findByActiveTrueOrderByNameAsc();
-    List<Agent> findByDepartmentIgnoreCaseOrderByNameAsc(String department);
-    long countByActiveTrue();
-}
-```
-
-#### `TicketRepository`
-
-```java
-public interface TicketRepository extends JpaRepository<Ticket, Long>,
-        JpaSpecificationExecutor<Ticket>,
-        RevisionRepository<Ticket, Long, Integer> {
-
-    @EntityGraph(attributePaths = {"customer", "agent"})
-    List<Ticket> findAllByOrderByCreatedAtDesc();
-
-    @EntityGraph(attributePaths = {"customer", "agent"})
-    List<Ticket> findByStatusOrderByCreatedAtDesc(TicketStatus status);
-
-    @EntityGraph(attributePaths = {"customer", "agent", "interactions"})
-    Optional<Ticket> findWithDetailsById(Long id);
-
-    boolean existsByCustomer_Id(Long customerId);
-    long countByStatus(TicketStatus status);
-    long countByAgent_IdAndStatusIn(Long agentId, List<TicketStatus> statuses);
-
-    @Query("select t.status as status, count(t) as total from Ticket t group by t.status")
-    List<TicketStatusCount> countGroupedByStatus();
-
-    @Query("""
-            select t from Ticket t
-            join fetch t.customer c
-            left join fetch t.agent
-            where c.id = :customerId
-            order by t.createdAt desc
-            """)
-    List<Ticket> findByCustomerWithRelations(@Param("customerId") Long customerId);
-}
-```
-
-> Observação: `Ticket` expõe os *getters* de conveniência `getCustomerId()` e
-> `getAgentId()`. Para que o Spring Data percorra a associação (`customer.id`)
-> em vez de procurar uma propriedade `customerId`, os métodos derivados usam o
-> separador explícito `_` (`existsByCustomer_Id`).
-
-#### `TicketStatusHistoryRepository`
-
-```java
-public interface TicketStatusHistoryRepository extends JpaRepository<TicketStatusHistory, Long> {
-    List<TicketStatusHistory> findByTicket_IdOrderByChangedAtAscIdAsc(Long ticketId);
-    List<TicketStatusHistory> findByToStatusAndChangedAtBetween(TicketStatus toStatus, Instant from, Instant to);
-    long countByTicket_Id(Long ticketId);
-
-    @Query("select h from TicketStatusHistory h join fetch h.ticket t where h.changedBy = :actor order by h.changedAt desc")
-    List<TicketStatusHistory> findByActor(@Param("actor") String actor);
-}
-```
-
-#### Specifications (filtros dinâmicos)
-
-`TicketSpecifications` compõe predicados opcionais a partir de `TicketFilter`;
-critérios nulos são ignorados. `fetchRelations()` faz `fetch` de `customer` e
-`agent` apenas na consulta de dados (não na de contagem), evitando N+1 na
-listagem paginada.
-
-```java
-Specification<Ticket> spec = TicketSpecifications.withFilter(
-        new TicketFilter(TicketStatus.OPEN, TicketPriority.HIGH, customerId, null, "login", null, null));
-
-Page<Ticket> page = ticketRepository.findAll(spec,
-        PageRequest.of(0, 10, Sort.by("createdAt").descending()));
-```
-
-#### Exemplos de uso nos serviços
-
-```java
-// CustomerServiceImpl.update — unicidade excluindo o próprio registro + lock otimista
-if (customerRepository.existsByEmailIgnoreCaseAndIdNot(request.email(), id)) {
-    throw new BusinessRuleException("ja existe outro cliente cadastrado com este email");
-}
-customer.update(request.name(), request.email(), request.phone(), request.document());
-return CustomerResponse.fromEntity(customerRepository.saveAndFlush(customer));
-
-// TicketServiceImpl.findById — carrega cliente, atendente e interações em uma consulta
-return ticketRepository.findWithDetailsById(id)
-        .map(TicketResponse::fromEntity)
-        .orElseThrow(() -> ResourceNotFoundException.forId("Ticket", id));
-
-// TicketServiceImpl.stats — projeção de interface para agregação
-for (TicketStatusCount count : ticketRepository.countGroupedByStatus()) {
-    byStatus.put(count.getStatus(), count.getTotal());
-}
-
-// Histórico de revisões (Envers) de qualquer entidade auditada
-List<RevisionResponse<TicketResponse>> revisions = ticketRepository.findRevisions(ticketId).stream()
-        .map(revision -> RevisionResponse.from(revision, TicketResponse::summaryFromEntity))
-        .toList();
-```
-
-
-### Gerenciamento de dados: transações, integridade e performance
-
-#### Transações
-
-* Todos os métodos de serviço são `@Transactional`; consultas usam
-  `readOnly = true` (Hibernate desliga *dirty checking* e o driver pode otimizar).
-* Alterações são feitas em entidades gerenciadas dentro da transação; o
-  `flush` explícito (`saveAndFlush`, `repository.flush()`) é usado quando o
-  serviço precisa que violações de integridade ou de versão apareçam antes do
-  retorno, para serem traduzidas em respostas HTTP adequadas.
-* O `DataSeeder` executa a carga inicial em **várias transações pequenas**
-  (`TransactionTemplate`), o que também produz um histórico Envers realista
-  (uma revisão por transação).
-
-#### Integridade
-
-| Mecanismo | Onde | Efeito |
-|---|---|---|
-| Unique constraints | `customers.email`, `customers.document`, `agents.email` | Duplicidade → `DataIntegrityViolationException` → HTTP 409 |
-| Verificações prévias no serviço | `existsByEmailIgnoreCase[AndIdNot]`, `existsByDocument[AndIdNot]` | Mensagem de negócio clara (HTTP 409) antes de chegar ao banco |
-| Chaves estrangeiras | `fk_tickets_customer`, `fk_tickets_agent`, `fk_interactions_ticket`, `fk_status_history_ticket` | Excluir cliente/atendente com tickets → HTTP 409 |
-| Lock otimista | `@Version` em `AuditableEntity` + campo `version` opcional nos `PUT` | Escrita concorrente com versão defasada → `OptimisticLockingFailureException` → HTTP 409 |
-| Regras do agregado | `Ticket.changeStatus`, `Ticket.update`, `Ticket.addInteraction` | Transições inválidas / ticket fechado / atendente inativo → HTTP 409 |
-| Cascata e órfãos | `cascade = ALL`, `orphanRemoval = true` | Interações e histórico removidos junto com o ticket |
-
-`GlobalExceptionHandler` centraliza a tradução: `ResourceNotFoundException`
-→ 404, validação → 400, `BusinessRuleException` / `DataIntegrityViolationException`
-/ `OptimisticLockingFailureException` → 409.
-
-#### Performance
-
-* Índices em todas as colunas usadas em filtros e ordenações frequentes.
-* `@EntityGraph` nas listagens e `join fetch` nas consultas por cliente.
-* Specification com `fetch` condicional (somente na consulta de resultados).
-* Paginação (`Pageable`) nos endpoints `/search`.
-* Projeção `TicketStatusCount` para estatísticas (sem hidratar entidades).
-* Sequências com `allocationSize = 50` + *batching* de inserts/updates.
-* `default_batch_fetch_size = 20` para carregamento em lote de proxies LAZY.
-* `open-in-view = false` evita conexões presas durante a serialização JSON.
-
-
-### Histórico de mudanças (auditoria)
-
-#### Auditoria de metadados (Spring Data JPA Auditing)
-
-`@EnableJpaAuditing(auditorAwareRef = "auditorProvider")` preenche
-`created_at`, `updated_at`, `created_by` e `updated_by` automaticamente. O
-"ator" vem do cabeçalho HTTP **`X-Actor`** (via `RequestActor`); na ausência
-dele (jobs, seeder, testes) é usado `system`.
-
-#### Histórico completo de entidades (Hibernate Envers)
-
-* Entidades anotadas com `@Audited`: `Customer`, `Agent`, `Ticket`, `Interaction`.
-  `@AuditOverride(forClass = AuditableEntity.class)` inclui os campos herdados.
-* Para cada entidade auditada existe uma tabela `<tabela>_aud` com as colunas
-  da entidade mais `rev` (número da revisão) e `revtype` (`0` INSERT,
-  `1` UPDATE, `2` DELETE).
-* `revinfo` é a entidade de revisão customizada (`CrmRevisionEntity`) com o
-  campo adicional `actor`, preenchido por `CrmRevisionListener`.
-* `org.hibernate.envers.store_data_at_delete=true` guarda a última foto do
-  registro na revisão de exclusão.
-* Uma transação = uma revisão; todas as entidades alteradas na mesma transação
-  compartilham o mesmo `rev`.
-
-Consulta via Spring Data Envers:
-
-```java
-Revisions<Integer, Customer> revisions = customerRepository.findRevisions(id);
-Optional<Revision<Integer, Customer>> last = customerRepository.findLastChangeRevision(id);
-Optional<Revision<Integer, Customer>> specific = customerRepository.findRevision(id, 42);
-```
-
-Endpoints expostos:
-
-| Endpoint | Retorno |
-|---|---|
-| `GET /api/customers/{id}/revisions` | Lista de revisões do cliente (número, timestamp, tipo, ator, dados) |
-| `GET /api/agents/{id}/revisions` | Idem para atendente |
-| `GET /api/tickets/{id}/revisions` | Idem para ticket (status, prioridade, atendente, datas em cada revisão) |
-| `GET /api/tickets/{id}/status-history` | Linha do tempo de status (`fromStatus`, `toStatus`, `reason`, `changedBy`, `changedAt`) |
-
-Exemplo de resposta de `GET /api/tickets/1/revisions`:
-
-```json
-[
-  { "revision": 3, "timestamp": "2026-09-17T18:10:02.115Z", "type": "INSERT", "actor": "system",
-    "data": { "id": 1, "status": "OPEN", "priority": "HIGH", "agentId": 1, "version": null } },
-  { "revision": 4, "timestamp": "2026-09-17T18:10:02.310Z", "type": "UPDATE", "actor": "system",
-    "data": { "id": 1, "status": "IN_PROGRESS", "priority": "HIGH", "agentId": 1, "version": null } }
-]
-```
-
-> O campo `version` não é auditado pelo Envers (comportamento padrão para o
-> campo de lock otimista), por isso aparece `null` nas revisões.
-
-#### Quando usar cada histórico
-
-| Necessidade | Fonte |
-|---|---|
-| "Quem mudou o quê e quando" em qualquer entidade, incluindo exclusões | Envers (`*_aud` + `revinfo`) |
-| Linha do tempo de atendimento de um ticket, com motivo da mudança, para telas e relatórios | `ticket_status_history` |
-| Métricas de SLA (tempo até `RESOLVED`/`CLOSED`) | `tickets.resolved_at` / `closed_at` + `ticket_status_history` |
-
-
-### Configuração
-
-`backend/src/main/resources/application.properties`:
-
-| Propriedade | Valor | Motivo |
-|---|---|---|
-| `spring.datasource.url` | `jdbc:h2:file:./data/crmdb;AUTO_SERVER=TRUE` | Dados sobrevivem a reinícios; `AUTO_SERVER` permite abrir o console H2 em paralelo |
-| `spring.jpa.hibernate.ddl-auto` | `update` | Mantém o schema (inclusive tabelas `_aud`) sem apagar dados |
-| `spring.sql.init.mode` | `never` | Carga inicial passou a ser feita pelo `DataSeeder` (idempotente) |
-| `app.seed.enabled` | `true` | Desative para subir com o banco vazio |
-| `spring.jpa.open-in-view` | `false` | Ver [Performance](#performance) |
-| `org.hibernate.envers.*` | sufixo `_aud`, colunas `rev`/`revtype`, `store_data_at_delete` | Convenções de auditoria |
-
-Perfil `test` (`src/test/resources/application-test.properties`): H2 em
-memória com `create-drop`, para isolamento total dos testes.
-
-Console H2: `http://localhost:8080/h2-console` com JDBC URL
-`jdbc:h2:file:./data/crmdb`, usuário `sa`, sem senha. Tabelas úteis para
-inspeção: `TICKETS_AUD`, `CUSTOMERS_AUD`, `REVINFO`, `TICKET_STATUS_HISTORY`.
-
-
-### Testes automatizados
-
-| Classe | Tipo | O que demonstra |
-|---|---|---|
-| `persistence/CustomerRepositoryTest` | `@DataJpaTest` | Auditoria automática, incremento de `@Version`, unique constraints (e-mail/documento), múltiplos `null` em documento, consultas derivadas, `@Query` com paginação |
-| `persistence/AgentRepositoryTest` | `@DataJpaTest` | Filtros derivados (`ActiveTrue`, `IgnoreCase`), contagem, unicidade, auditoria |
-| `persistence/TicketRepositoryTest` | `@DataJpaTest` | Cascata de interações/histórico, `orphanRemoval`, `@EntityGraph`, `join fetch`, projeção de agregação, Specifications + paginação, FK impedindo exclusão de cliente |
-| `persistence/OptimisticLockingIntegrationTest` | `@SpringBootTest` | Duas "sessões" atualizando o mesmo registro: a segunda falha com `OptimisticLockingFailureException` |
-| `history/EnversAuditIntegrationTest` | `@SpringBootTest` | Revisões INSERT/UPDATE/DELETE de cliente e atendente; revisões e linha do tempo de status do ticket |
-| `ticket/TicketStatusTransitionTest` | Unitário | Máquina de estados, datas de resolução/fechamento, bloqueios em ticket fechado |
-| `CrmApiIntegrationTest` | `@SpringBootTest` + MockMvc | Fluxo ponta a ponta pela API, incluindo `X-Actor`, `/status-history`, `/revisions`, `/search`, `/stats` e respostas 404/400/409 |
-
-Execução:
-
-```bash
-cd backend
-./mvnw test          # Linux/macOS
-mvnw.cmd test        # Windows
-```
-
-Os testes `@DataJpaTest` importam `PersistenceConfig` para ativar auditoria e a
-fábrica de repositórios do Envers; os `@SpringBootTest` usam o perfil `test`
-(H2 em memória), compartilham um único contexto e usam e-mails únicos para não
-interferirem entre si.
+Perfil `test`: H2 em memória, Config Client desabilitado, dispatcher
+automático desligado. Detalhes em [Testes da Etapa 3](#testes-da-etapa-3).
 
 ---
 
@@ -1211,7 +641,7 @@ vez de `no-reply@pbcrm.local` (valor local).
 | backend | `notification/TicketNotificationListenerTest` | `@SpringBootTest` + `@MockBean NotificationGateway` | Eventos publicados **após commit** para criação, status e interação; nenhuma notificação quando a transação falha |
 | backend | `notification/FeignNotificationGatewayTest` | `@SpringBootTest` + `@MockBean NotificationClient` | Repasse ao Feign, fallback silencioso no envio, 503 nas consultas, **abertura do circuit breaker** após 3 falhas e bloqueio das chamadas seguintes, `status()` com instância descoberta |
 | backend | `notification/NotificationApiIntegrationTest` | `@SpringBootTest` + MockMvc + `@MockBean NotificationGateway` | Novos endpoints do monólito: listagem, envio manual com `X-Actor`, 404/400/503, preferências, status |
-| backend | testes da Etapa 2 (`CrmApiIntegrationTest` etc.) | — | Continuam passando com a integração ativa: sem microsserviço, o gateway degrada para o fallback |
+| backend | testes das etapas anteriores (`CrmApiIntegrationTest` etc.) | — | Continuam passando com a integração ativa: sem microsserviço, o gateway degrada para o fallback |
 
 Os testes que usam `@MockBean` criam contextos Spring adicionais; cada um
 recebe um banco H2 em memória próprio (`@TestPropertySource`) para não colidir
