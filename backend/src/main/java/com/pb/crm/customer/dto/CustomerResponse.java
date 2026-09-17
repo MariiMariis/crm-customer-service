@@ -4,16 +4,17 @@ import com.pb.crm.customer.Customer;
 
 import java.time.Instant;
 
-/**
- * Payload de saida com os dados do cliente.
- */
 public record CustomerResponse(
         Long id,
         String name,
         String email,
         String phone,
         String document,
-        Instant createdAt
+        Instant createdAt,
+        Instant updatedAt,
+        String createdBy,
+        String updatedBy,
+        Long version
 ) {
     public static CustomerResponse fromEntity(Customer customer) {
         return new CustomerResponse(
@@ -22,7 +23,11 @@ public record CustomerResponse(
                 customer.getEmail(),
                 customer.getPhone(),
                 customer.getDocument(),
-                customer.getCreatedAt()
+                customer.getCreatedAt(),
+                customer.getUpdatedAt(),
+                customer.getCreatedBy(),
+                customer.getUpdatedBy(),
+                customer.getVersion()
         );
     }
 }

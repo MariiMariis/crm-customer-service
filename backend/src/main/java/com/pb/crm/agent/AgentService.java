@@ -2,6 +2,7 @@ package com.pb.crm.agent;
 
 import com.pb.crm.agent.dto.AgentRequest;
 import com.pb.crm.agent.dto.AgentResponse;
+import com.pb.crm.audit.RevisionResponse;
 
 import java.util.List;
 
@@ -15,5 +16,9 @@ public interface AgentService {
 
     List<AgentResponse> findAll();
 
+    List<AgentResponse> findActive();
+
     void delete(Long id);
+
+    List<RevisionResponse<AgentResponse>> findRevisions(Long id);
 }

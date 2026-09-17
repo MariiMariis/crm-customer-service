@@ -4,9 +4,6 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
-/**
- * Payload de entrada para criar/atualizar um cliente.
- */
 public record CustomerRequest(
         @NotBlank(message = "nome e obrigatorio")
         @Size(max = 120, message = "nome deve ter ate 120 caracteres")
@@ -14,10 +11,15 @@ public record CustomerRequest(
 
         @NotBlank(message = "email e obrigatorio")
         @Email(message = "email invalido")
+        @Size(max = 160, message = "email deve ter ate 160 caracteres")
         String email,
 
+        @Size(max = 20, message = "telefone deve ter ate 20 caracteres")
         String phone,
 
-        String document
+        @Size(max = 20, message = "documento deve ter ate 20 caracteres")
+        String document,
+
+        Long version
 ) {
 }
