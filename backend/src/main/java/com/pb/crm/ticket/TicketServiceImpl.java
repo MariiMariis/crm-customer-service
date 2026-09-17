@@ -90,13 +90,13 @@ public class TicketServiceImpl implements TicketService {
     @Override
     @Transactional(readOnly = true)
     public List<TicketResponse> findByCustomer(Long customerId) {
-        return toSummaries(ticketRepository.findByCustomerIdOrderByCreatedAtDesc(customerId));
+        return toSummaries(ticketRepository.findByCustomer_IdOrderByCreatedAtDesc(customerId));
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<TicketResponse> findByStatusAndCustomer(TicketStatus status, Long customerId) {
-        return toSummaries(ticketRepository.findByStatusAndCustomerIdOrderByCreatedAtDesc(status, customerId));
+        return toSummaries(ticketRepository.findByStatusAndCustomer_IdOrderByCreatedAtDesc(status, customerId));
     }
 
     @Override
@@ -146,7 +146,7 @@ public class TicketServiceImpl implements TicketService {
     @Transactional(readOnly = true)
     public List<TicketStatusHistoryResponse> findStatusHistory(Long ticketId) {
         assertTicketExists(ticketId);
-        return statusHistoryRepository.findByTicketIdOrderByChangedAtAscIdAsc(ticketId).stream()
+        return statusHistoryRepository.findByTicket_IdOrderByChangedAtAscIdAsc(ticketId).stream()
                 .map(TicketStatusHistoryResponse::fromEntity)
                 .toList();
     }

@@ -22,21 +22,21 @@ public interface TicketRepository extends JpaRepository<Ticket, Long>,
     List<Ticket> findByStatusOrderByCreatedAtDesc(TicketStatus status);
 
     @EntityGraph(attributePaths = {"customer", "agent"})
-    List<Ticket> findByCustomerIdOrderByCreatedAtDesc(Long customerId);
+    List<Ticket> findByCustomer_IdOrderByCreatedAtDesc(Long customerId);
 
     @EntityGraph(attributePaths = {"customer", "agent"})
-    List<Ticket> findByStatusAndCustomerIdOrderByCreatedAtDesc(TicketStatus status, Long customerId);
+    List<Ticket> findByStatusAndCustomer_IdOrderByCreatedAtDesc(TicketStatus status, Long customerId);
 
     @EntityGraph(attributePaths = {"customer", "agent", "interactions"})
     Optional<Ticket> findWithDetailsById(Long id);
 
-    boolean existsByCustomerId(Long customerId);
+    boolean existsByCustomer_Id(Long customerId);
 
-    boolean existsByAgentId(Long agentId);
+    boolean existsByAgent_Id(Long agentId);
 
     long countByStatus(TicketStatus status);
 
-    long countByAgentIdAndStatusIn(Long agentId, List<TicketStatus> statuses);
+    long countByAgent_IdAndStatusIn(Long agentId, List<TicketStatus> statuses);
 
     List<Ticket> findByStatusAndResolvedAtBefore(TicketStatus status, Instant threshold);
 

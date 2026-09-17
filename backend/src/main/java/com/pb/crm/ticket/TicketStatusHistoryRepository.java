@@ -9,11 +9,11 @@ import java.util.List;
 
 public interface TicketStatusHistoryRepository extends JpaRepository<TicketStatusHistory, Long> {
 
-    List<TicketStatusHistory> findByTicketIdOrderByChangedAtAscIdAsc(Long ticketId);
+    List<TicketStatusHistory> findByTicket_IdOrderByChangedAtAscIdAsc(Long ticketId);
 
     List<TicketStatusHistory> findByToStatusAndChangedAtBetween(TicketStatus toStatus, Instant from, Instant to);
 
-    long countByTicketId(Long ticketId);
+    long countByTicket_Id(Long ticketId);
 
     @Query("""
             select h from TicketStatusHistory h
