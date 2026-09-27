@@ -48,7 +48,7 @@ class ApiGatewayIntegrationTest {
                 String path = exchange.getRequestURI().getPath();
                 String body = switch (path) {
                     case "/actuator/health" -> "{\"status\":\"UP\",\"components\":{\"db\":{\"status\":\"UP\"},\"rabbit\":{\"status\":\"UP\"}}}";
-                    case "/api/messaging/status" -> "{\"outbox\":{\"pending\":3},\"queues\":[{\"name\":\"team.q\",\"messages\":0,\"consumers\":1,\"retrying\":0,\"deadLetters\":2}]}";
+                    case "/api/messaging/status" -> "{\"exchange\":\"team.events\",\"outbox\":{\"pending\":3,\"published\":7},\"queues\":[{\"name\":\"team.q\",\"messages\":0,\"consumers\":1,\"retrying\":0,\"deadLetters\":2,\"subscriptions\":[{\"exchange\":\"sales.events\",\"routingKey\":\"sales.lead.#\"}]}]}";
                     default -> "{\"content\":[{\"id\":1,\"name\":\"Ana\"}],\"totalElements\":1}";
                 };
                 byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
@@ -143,6 +143,11 @@ class ApiGatewayIntegrationTest {
         assertThat(team.get("components").get("rabbit").asText()).isEqualTo("UP");
         assertThat(team.get("messaging").get("outboxPending").asLong()).isEqualTo(3);
         assertThat(team.get("messaging").get("deadLetters").asLong()).isEqualTo(2);
+        assertThat(team.get("messaging").get("exchange").asText()).isEqualTo("team.events");
+        assertThat(team.get("messaging").get("published").asLong()).isEqualTo(7);
+        JsonNode subscription = team.get("messaging").get("queues").get(0).get("subscriptions").get(0);
+        assertThat(subscription.get("exchange").asText()).isEqualTo("sales.events");
+        assertThat(subscription.get("routingKey").asText()).isEqualTo("sales.lead.#");
         assertThat(health.get("services").get(3).get("status").asText()).isEqualTo("DOWN");
     }
 }

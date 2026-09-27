@@ -78,3 +78,16 @@
         @apply border-b border-surface-800 transition hover:bg-surface-850;
     }
 }
+
+@keyframes event-arrived {
+    from {
+        background-color: rgb(59 130 246 / 0.25);
+    }
+    to {
+        background-color: transparent;
+    }
+}
+
+.event-arrived {
+    animation: event-arrived 2.4s ease-out;
+}

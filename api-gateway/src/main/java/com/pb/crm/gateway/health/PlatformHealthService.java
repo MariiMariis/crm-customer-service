@@ -19,10 +19,15 @@ import java.util.concurrent.Executors;
 @Service
 public class PlatformHealthService {
 
-    public record QueueHealth(String name, Long messages, Integer consumers, long retrying, long deadLetters) {
+    public record Subscription(String exchange, String routingKey) {
     }
 
-    public record MessagingHealth(long outboxPending, long deadLetters, List<QueueHealth> queues) {
+    public record QueueHealth(String name, Long messages, Integer consumers, long retrying, long deadLetters,
+                              List<Subscription> subscriptions) {
+    }
+
+    public record MessagingHealth(String exchange, long outboxPending, long published, long deadLetters,
+                                  List<QueueHealth> queues) {
     }
 
     public record ServiceHealth(String name, String url, String status, long latencyMs,
@@ -84,14 +89,24 @@ public class PlatformHealthService {
         for (JsonNode queue : status.path("queues")) {
             long dlq = queue.path("deadLetters").asLong();
             deadLetters += dlq;
+            List<Subscription> subscriptions = new ArrayList<>();
+            for (JsonNode subscription : queue.path("subscriptions")) {
+                subscriptions.add(new Subscription(subscription.path("exchange").asText(), subscription.path("routingKey").asText()));
+            }
             queues.add(new QueueHealth(
                     queue.path("name").asText(),
                     queue.path("messages").isNull() ? null : queue.path("messages").asLong(),
                     queue.path("consumers").isNull() ? null : queue.path("consumers").asInt(),
                     queue.path("retrying").asLong(),
-                    dlq));
+                    dlq,
+                    subscriptions));
         }
-        return new MessagingHealth(status.path("outbox").path("pending").asLong(), deadLetters, queues);
+        return new MessagingHealth(
+                status.path("exchange").asText(null),
+                status.path("outbox").path("pending").asLong(),
+                status.path("outbox").path("published").asLong(),
+                deadLetters,
+                queues);
     }
 
     private JsonNode get(String url) {

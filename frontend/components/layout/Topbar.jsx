@@ -8,6 +8,7 @@ import { api } from "@/lib/api";
 import { useCurrentUser } from "@/components/providers/CurrentUserProvider";
 import { Avatar } from "@/components/ui/Layout";
 import { SECTIONS } from "@/components/layout/Sidebar";
+import { NOTIFICATIONS_CHANGED } from "@/components/notifications/events";
 
 const TEAM_LABELS = {
     INSIDE_SALES: "Inside Sales",
@@ -29,9 +30,11 @@ function NotificationBell({ userId }) {
                 .catch(() => active && setUnread(0));
         load();
         const timer = setInterval(load, 10000);
+        window.addEventListener(NOTIFICATIONS_CHANGED, load);
         return () => {
             active = false;
             clearInterval(timer);
+            window.removeEventListener(NOTIFICATIONS_CHANGED, load);
         };
     }, [userId]);
 

@@ -51,7 +51,7 @@ public class Notification extends AggregateRoot {
             notification.sentAt = Instant.now();
         } else if (!preference.allows(channel)) {
             notification.status = NotificationStatus.SKIPPED;
-            notification.skipReason = "canal %s desligado nas preferencias do vendedor".formatted(channel);
+            notification.skipReason = "e-mail desligado nas preferências do vendedor";
         } else if (!recipient.hasEmail()) {
             notification.status = NotificationStatus.SKIPPED;
             notification.skipReason = "vendedor sem e-mail cadastrado";

@@ -6,6 +6,7 @@ import com.pb.crm.commons.messaging.EventEnvelope;
 import com.pb.crm.commons.messaging.consumer.ProcessedEventStore;
 import com.pb.crm.commons.messaging.outbox.OutboxEvent;
 import com.pb.crm.commons.messaging.outbox.OutboxEventRepository;
+import com.pb.crm.commons.messaging.topology.ConsumerQueue;
 import com.pb.crm.commons.messaging.web.MessagingOperations;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -137,6 +138,7 @@ class MessagingIntegrationTest {
         assertThat(queues).anySatisfy(queue -> {
             assertThat(queue.name()).isEqualTo(MessagingTestApplication.QUEUE);
             assertThat(queue.deadLetters()).isEqualTo(1);
+            assertThat(queue.subscriptions()).containsExactly(ConsumerQueue.on("test.events", "test.#"));
         });
 
         listener.failing(false);
@@ -155,6 +157,20 @@ class MessagingIntegrationTest {
 
         await().atMost(Duration.ofSeconds(10)).until(() -> dlqCount() == 1);
         assertThat(listener.attempts()).isZero();
+    }
+
+    @Test
+    void replayOnlyMovesMessagesThatWereParkedWhenItStarted() {
+        MessageProperties properties = new MessageProperties();
+        properties.setContentType(MessageProperties.CONTENT_TYPE_JSON);
+        rabbitTemplate.send("", MessagingTestApplication.QUEUE,
+                MessageBuilder.withBody("continua invalido".getBytes()).andProperties(properties).build());
+        await().atMost(Duration.ofSeconds(10)).until(() -> dlqCount() == 1);
+
+        MessagingOperations.ReplayResult result = operations.replayDeadLetters(MessagingTestApplication.QUEUE, 50);
+
+        assertThat(result.replayed()).isEqualTo(1);
+        await().atMost(Duration.ofSeconds(10)).until(() -> dlqCount() == 1);
     }
 
     private long dlqCount() {

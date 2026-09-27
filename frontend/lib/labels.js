@@ -102,6 +102,19 @@ export const PRODUCT_CATEGORIES = [
     { value: "SERVICE", label: "Serviço", color: "amber" },
 ];
 
+export const NOTIFICATION_TYPES = [
+    { value: "LEAD_ASSIGNED", label: "Lead atribuído", color: "sky" },
+    { value: "DISCOUNT_APPROVAL_REQUESTED", label: "Aprovação de desconto", color: "amber" },
+    { value: "OPPORTUNITY_WON", label: "Oportunidade ganha", color: "emerald" },
+    { value: "OPPORTUNITY_LOST", label: "Oportunidade perdida", color: "rose" },
+];
+
+export const NOTIFICATION_STATUSES = [
+    { value: "PENDING", label: "Na fila", color: "amber" },
+    { value: "SENT", label: "Enviado", color: "emerald" },
+    { value: "SKIPPED", label: "Não enviado", color: "slate" },
+];
+
 export function labelOf(list, value) {
     return list.find((item) => item.value === value)?.label ?? value ?? "-";
 }

@@ -29,8 +29,8 @@ public final class AlertRules {
         return new Alert(
                 NotificationType.LEAD_ASSIGNED,
                 List.of(RecipientRole.OWNER),
-                "Novo lead atribuido: %s".formatted(lead.leadName()),
-                "%s (%s) foi atribuido a voce com score %d. Faca o primeiro contato o quanto antes."
+                "Novo lead atribuído: %s".formatted(lead.leadName()),
+                "%s (%s) foi atribuído a você com score %d. Faça o primeiro contato o quanto antes."
                         .formatted(lead.leadName(), orDash(lead.companyName()), lead.score()),
                 "/leads/" + lead.leadId()
         );
@@ -40,8 +40,8 @@ public final class AlertRules {
         return new Alert(
                 NotificationType.DISCOUNT_APPROVAL_REQUESTED,
                 List.of(RecipientRole.OWNER_MANAGER),
-                "Aprovacao de desconto pendente: %s".formatted(opportunity.title()),
-                "%s solicitou desconto acima do limite do catalogo na oportunidade \"%s\" (%s), valor atual de %s."
+                "Aprovação de desconto pendente: %s".formatted(opportunity.title()),
+                "%s solicitou desconto acima do limite do catálogo na oportunidade \"%s\" (%s), valor atual de %s."
                         .formatted(orDash(opportunity.ownerName()), opportunity.title(), orDash(opportunity.companyName()),
                                 money(opportunity.amount())),
                 "/opportunities/" + opportunity.opportunityId()

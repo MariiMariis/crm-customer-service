@@ -40,7 +40,8 @@ public class MessagingOperations {
         this.rabbitTemplate = rabbitTemplate;
     }
 
-    public record QueueStatus(String name, Long messages, Integer consumers, long retrying, long deadLetters, boolean reachable) {
+    public record QueueStatus(String name, Long messages, Integer consumers, long retrying, long deadLetters, boolean reachable,
+                              List<ConsumerQueue.Subscription> subscriptions) {
     }
 
     public record OutboxStatus(long pending, long published, Instant oldestPendingAt) {
@@ -81,8 +82,10 @@ public class MessagingOperations {
     public ReplayResult replayDeadLetters(String queueName, int max) {
         ConsumerQueue queue = topology.findByName(queueName)
                 .orElseThrow(() -> new ResourceNotFoundException("fila de consumo nao encontrada: " + queueName));
+        QueueInformation deadLetters = amqpAdmin.getQueueInfo(queue.deadLetterQueue());
+        int limit = deadLetters == null ? 0 : Math.min(max, deadLetters.getMessageCount());
         int replayed = 0;
-        while (replayed < max) {
+        while (replayed < limit) {
             Message dead = rabbitTemplate.receive(queue.deadLetterQueue());
             if (dead == null) {
                 break;
@@ -113,9 +116,10 @@ public class MessagingOperations {
                     main == null ? null : main.getConsumerCount(),
                     retrying,
                     dlq == null ? 0 : dlq.getMessageCount(),
-                    main != null);
+                    main != null,
+                    queue.subscriptions());
         } catch (RuntimeException ex) {
-            return new QueueStatus(queue.name(), null, null, 0, 0, false);
+            return new QueueStatus(queue.name(), null, null, 0, 0, false, queue.subscriptions());
         }
     }
 }

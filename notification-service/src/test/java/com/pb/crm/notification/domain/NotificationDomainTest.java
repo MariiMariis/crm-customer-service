@@ -37,7 +37,7 @@ class NotificationDomainTest {
 
         Alert assigned = AlertRules.leadAssigned(new AlertRules.LeadFacts(7L, "Renata Lopes", "Lojas Alfa", 90, "Ana"));
         assertThat(assigned.recipients()).containsExactly(RecipientRole.OWNER);
-        assertThat(assigned.title()).isEqualTo("Novo lead atribuido: Renata Lopes");
+        assertThat(assigned.title()).isEqualTo("Novo lead atribuído: Renata Lopes");
         assertThat(AlertRules.opportunityLost(DEAL).message()).contains("Motivo: preco");
     }
 
