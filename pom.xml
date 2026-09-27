@@ -26,6 +26,7 @@
         <module>catalog-service</module>
         <module>sales-service</module>
         <module>notification-service</module>
+        <module>api-gateway</module>
     </modules>
 
     <properties>

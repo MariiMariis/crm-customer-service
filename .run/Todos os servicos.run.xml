@@ -6,6 +6,7 @@
     <toRun name="Catalog Service (8084)" type="Application" />
     <toRun name="Sales Service (8085)" type="Application" />
     <toRun name="Notification Service (8081)" type="Application" />
+    <toRun name="API Gateway (8080)" type="Application" />
     <method v="2" />
   </configuration>
 </component>
