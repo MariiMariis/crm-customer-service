@@ -1,0 +1,16 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Catalog Service (8084)" type="Application" factoryName="Application">
+    <option name="MAIN_CLASS_NAME" value="com.pb.crm.catalog.CatalogServiceApplication" />
+    <module name="catalog-service" />
+    <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/catalog-service" />
+    <extension name="coverage">
+      <pattern>
+        <option name="PATTERN" value="com.pb.crm.catalog.*" />
+        <option name="ENABLED" value="true" />
+      </pattern>
+    </extension>
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>
