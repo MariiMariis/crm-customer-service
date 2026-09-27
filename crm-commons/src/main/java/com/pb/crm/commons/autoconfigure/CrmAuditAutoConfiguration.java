@@ -2,6 +2,7 @@ package com.pb.crm.commons.autoconfigure;
 
 import com.pb.crm.commons.actor.RequestActor;
 import com.pb.crm.commons.audit.CrmRevisionEntity;
+import com.pb.crm.commons.messaging.outbox.OutboxEvent;
 import jakarta.persistence.EntityManager;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.AutoConfigurationPackage;
@@ -16,7 +17,7 @@ import java.util.Optional;
 
 @AutoConfiguration(before = {HibernateJpaAutoConfiguration.class, JpaRepositoriesAutoConfiguration.class})
 @ConditionalOnClass(EntityManager.class)
-@AutoConfigurationPackage(basePackageClasses = CrmRevisionEntity.class)
+@AutoConfigurationPackage(basePackageClasses = {CrmRevisionEntity.class, OutboxEvent.class})
 @EnableJpaAuditing(auditorAwareRef = "crmAuditorProvider")
 public class CrmAuditAutoConfiguration {
 

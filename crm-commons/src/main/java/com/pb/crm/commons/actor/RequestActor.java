@@ -13,6 +13,13 @@ public final class RequestActor {
     }
 
     public static String current() {
+        return MessageContext.current()
+                .map(MessageContext.Current::actor)
+                .filter(actor -> !actor.isBlank())
+                .orElseGet(RequestActor::fromHttpRequest);
+    }
+
+    private static String fromHttpRequest() {
         RequestAttributes attributes = RequestContextHolder.getRequestAttributes();
         if (attributes instanceof ServletRequestAttributes servletAttributes) {
             String header = servletAttributes.getRequest().getHeader(HEADER);
