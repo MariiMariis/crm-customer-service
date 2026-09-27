@@ -23,9 +23,17 @@ class ConfigServerApplicationTests {
         mockMvc.perform(get("/notification-service/default"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.name").value("notification-service"))
-                .andExpect(jsonPath("$.propertySources[*].source['app.notifications.dispatch.fixed-delay']").value(hasItem("5000")))
-                .andExpect(jsonPath("$.propertySources[*].source['app.notifications.sender-email']").value(hasItem("no-reply@pbcrm.com")))
+                .andExpect(jsonPath("$.propertySources[*].source['crm.notification.dispatch.concurrency']").value(hasItem("2")))
+                .andExpect(jsonPath("$.propertySources[*].source['crm.notification.sender-email']").value(hasItem("no-reply@pbtech.com.br")))
                 .andExpect(jsonPath("$.propertySources[*].source['platform.config-source']").value(hasItem("config-server")));
+    }
+
+    @Test
+    void deveServirConfiguracaoCompartilhadaDeMensageria() throws Exception {
+        mockMvc.perform(get("/sales-service/default"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.propertySources[*].source['spring.rabbitmq.username']").value(hasItem("crm")))
+                .andExpect(jsonPath("$.propertySources[*].source['crm.messaging.retry.delays']").value(hasItem("5s,30s,2m")));
     }
 
     @Test

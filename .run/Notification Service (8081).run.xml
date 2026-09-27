@@ -1,11 +1,11 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="Notification Service (8081)" type="Application" factoryName="Application">
-    <option name="MAIN_CLASS_NAME" value="com.pb.notification.NotificationServiceApplication" />
+    <option name="MAIN_CLASS_NAME" value="com.pb.crm.notification.NotificationServiceApplication" />
     <module name="notification-service" />
     <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/notification-service" />
     <extension name="coverage">
       <pattern>
-        <option name="PATTERN" value="com.pb.notification.*" />
+        <option name="PATTERN" value="com.pb.crm.notification.*" />
         <option name="ENABLED" value="true" />
       </pattern>
     </extension>
