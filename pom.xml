@@ -24,6 +24,7 @@
         <module>team-service</module>
         <module>accounts-service</module>
         <module>catalog-service</module>
+        <module>sales-service</module>
         <module>notification-service</module>
     </modules>
 

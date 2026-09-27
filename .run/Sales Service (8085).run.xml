@@ -1,0 +1,16 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Sales Service (8085)" type="Application" factoryName="Application">
+    <option name="MAIN_CLASS_NAME" value="com.pb.crm.sales.SalesServiceApplication" />
+    <module name="sales-service" />
+    <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/sales-service" />
+    <extension name="coverage">
+      <pattern>
+        <option name="PATTERN" value="com.pb.crm.sales.*" />
+        <option name="ENABLED" value="true" />
+      </pattern>
+    </extension>
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>

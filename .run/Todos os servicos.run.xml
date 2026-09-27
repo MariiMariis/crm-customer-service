@@ -4,6 +4,7 @@
     <toRun name="Team Service (8082)" type="Application" />
     <toRun name="Accounts Service (8083)" type="Application" />
     <toRun name="Catalog Service (8084)" type="Application" />
+    <toRun name="Sales Service (8085)" type="Application" />
     <toRun name="Notification Service (8081)" type="Application" />
     <method v="2" />
   </configuration>
