@@ -7,17 +7,14 @@ import com.pb.crm.sales.domain.reference.ContactRef;
 import com.pb.crm.sales.domain.reference.ReferenceRepository;
 import com.pb.crm.sales.domain.reference.SalesRepRef;
 import com.pb.crm.sales.domain.reference.SalesRepRefRepository;
+import com.pb.crm.sales.support.IntegrationTestSupport;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
-import org.testcontainers.containers.PostgreSQLContainer;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -33,21 +30,12 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest
-@AutoConfigureMockMvc
-class ActivityApiIntegrationTest {
+class ActivityApiIntegrationTest extends IntegrationTestSupport {
 
     private static final long OWNER_ID = 1201L;
     private static final long COMPANY_ID = 1301L;
     private static final long ARCHIVED_COMPANY_ID = 1302L;
     private static final long CONTACT_ID = 1401L;
-
-    @ServiceConnection
-    static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16-alpine");
-
-    static {
-        POSTGRES.start();
-    }
 
     @Autowired
     private MockMvc mockMvc;

@@ -10,6 +10,10 @@ import java.time.Instant;
 
 public class Product extends AggregateRoot {
 
+    public static final String CREATED = "product.created";
+    public static final String UPDATED = "product.updated";
+    public static final String STATUS_CHANGED = "product.status-changed";
+
     private static final BigDecimal HUNDRED = new BigDecimal("100");
 
     private Sku sku;
@@ -30,6 +34,7 @@ public class Product extends AggregateRoot {
         }
         product.sku = sku;
         product.active = true;
+        product.recordEvent(CREATED);
         return product;
     }
 
@@ -55,6 +60,7 @@ public class Product extends AggregateRoot {
             throw new BusinessRuleException("a subcategoria nao pode ser alterada porque compoe o SKU; cadastre um novo produto");
         }
         this.details = validated;
+        recordEvent(UPDATED);
     }
 
     public void activate() {
@@ -63,6 +69,7 @@ public class Product extends AggregateRoot {
             throw new BusinessRuleException("o produto ja esta ativo");
         }
         active = true;
+        recordEvent(STATUS_CHANGED);
     }
 
     public void deactivate() {
@@ -71,12 +78,20 @@ public class Product extends AggregateRoot {
             throw new BusinessRuleException("o produto ja esta inativo");
         }
         active = false;
+        recordEvent(STATUS_CHANGED);
     }
 
     @Override
     public void archive() {
         super.archive();
         active = false;
+        recordEvent(STATUS_CHANGED);
+    }
+
+    @Override
+    public void restore() {
+        super.restore();
+        recordEvent(STATUS_CHANGED);
     }
 
     public boolean isSellable() {

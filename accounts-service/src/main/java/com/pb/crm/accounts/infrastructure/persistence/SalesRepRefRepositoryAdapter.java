@@ -4,6 +4,7 @@ import com.pb.crm.accounts.domain.salesrep.SalesRepRef;
 import com.pb.crm.accounts.domain.salesrep.SalesRepRefRepository;
 import org.springframework.stereotype.Repository;
 
+import java.time.Instant;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -38,10 +39,14 @@ public class SalesRepRefRepositoryAdapter implements SalesRepRefRepository {
     }
 
     @Override
-    public void upsert(SalesRepRef salesRep) {
+    public boolean upsert(SalesRepRef salesRep, Instant occurredAt) {
         SalesRepRefJpaEntity entity = jpaRepository.findById(salesRep.id())
                 .orElseGet(() -> new SalesRepRefJpaEntity(salesRep.id()));
-        entity.apply(salesRep.name(), salesRep.email(), salesRep.active(), salesRep.archived());
+        if (entity.isStaleComparedTo(occurredAt)) {
+            return false;
+        }
+        entity.apply(salesRep.name(), salesRep.email(), salesRep.active(), salesRep.archived(), occurredAt);
         jpaRepository.save(entity);
+        return true;
     }
 }

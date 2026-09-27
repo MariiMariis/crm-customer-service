@@ -5,6 +5,7 @@ import com.pb.crm.commons.domain.PageQuery;
 import com.pb.crm.commons.domain.PageResult;
 import com.pb.crm.commons.error.BusinessRuleException;
 import com.pb.crm.commons.error.ResourceNotFoundException;
+import com.pb.crm.commons.messaging.DomainEventPublisher;
 import com.pb.crm.team.application.salesrep.dto.SalesRepRequest;
 import com.pb.crm.team.application.salesrep.dto.SalesRepResponse;
 import com.pb.crm.team.domain.salesrep.SalesRep;
@@ -26,11 +27,15 @@ import java.util.stream.Collectors;
 public class SalesRepServiceImpl implements SalesRepService {
 
     private static final String ENTITY_NAME = "Vendedor";
+    private static final String EVENT_PREFIX = "team.";
+    private static final String AGGREGATE_TYPE = "SalesRep";
 
     private final SalesRepRepository repository;
+    private final DomainEventPublisher eventPublisher;
 
-    public SalesRepServiceImpl(SalesRepRepository repository) {
+    public SalesRepServiceImpl(SalesRepRepository repository, DomainEventPublisher eventPublisher) {
         this.repository = repository;
+        this.eventPublisher = eventPublisher;
     }
 
     @Override
@@ -48,7 +53,7 @@ public class SalesRepServiceImpl implements SalesRepService {
                 request.monthlyQuota(),
                 resolveManager(request.managerId())
         );
-        return toResponse(repository.save(salesRep));
+        return toResponse(persist(salesRep));
     }
 
     @Override
@@ -71,7 +76,7 @@ public class SalesRepServiceImpl implements SalesRepService {
                 request.monthlyQuota(),
                 resolveManager(request.managerId())
         );
-        return toResponse(repository.save(salesRep));
+        return toResponse(persist(salesRep));
     }
 
     @Override
@@ -93,7 +98,7 @@ public class SalesRepServiceImpl implements SalesRepService {
     public SalesRepResponse activate(Long id) {
         SalesRep salesRep = load(id);
         salesRep.activate();
-        return toResponse(repository.save(salesRep));
+        return toResponse(persist(salesRep));
     }
 
     @Override
@@ -102,7 +107,7 @@ public class SalesRepServiceImpl implements SalesRepService {
         SalesRep salesRep = load(id);
         assertNoActiveSubordinates(salesRep);
         salesRep.deactivate();
-        return toResponse(repository.save(salesRep));
+        return toResponse(persist(salesRep));
     }
 
     @Override
@@ -111,7 +116,7 @@ public class SalesRepServiceImpl implements SalesRepService {
         SalesRep salesRep = load(id);
         assertNoActiveSubordinates(salesRep);
         salesRep.archive();
-        return toResponse(repository.save(salesRep));
+        return toResponse(persist(salesRep));
     }
 
     @Override
@@ -119,7 +124,7 @@ public class SalesRepServiceImpl implements SalesRepService {
     public SalesRepResponse restore(Long id) {
         SalesRep salesRep = load(id);
         salesRep.restore();
-        return toResponse(repository.save(salesRep));
+        return toResponse(persist(salesRep));
     }
 
     @Override
@@ -129,6 +134,14 @@ public class SalesRepServiceImpl implements SalesRepService {
         return repository.findRevisions(id).stream()
                 .map(revision -> revision.map(SalesRepResponse::from))
                 .toList();
+    }
+
+    private SalesRep persist(SalesRep salesRep) {
+        List<String> events = salesRep.pullEvents();
+        SalesRep saved = repository.save(salesRep);
+        SalesRepSnapshot snapshot = SalesRepSnapshot.from(saved);
+        events.forEach(event -> eventPublisher.publish(EVENT_PREFIX + event, AGGREGATE_TYPE, saved.getId(), snapshot));
+        return saved;
     }
 
     private SalesRep load(Long id) {

@@ -11,6 +11,7 @@ import com.pb.crm.commons.domain.AuditRevision;
 import com.pb.crm.commons.domain.PageQuery;
 import com.pb.crm.commons.domain.PageResult;
 import com.pb.crm.commons.error.ResourceNotFoundException;
+import com.pb.crm.commons.messaging.DomainEventPublisher;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,10 +21,15 @@ import java.util.List;
 @Service
 public class ProductServiceImpl implements ProductService {
 
-    private final ProductRepository repository;
+    private static final String EVENT_PREFIX = "catalog.";
+    private static final String AGGREGATE_TYPE = "Product";
 
-    public ProductServiceImpl(ProductRepository repository) {
+    private final ProductRepository repository;
+    private final DomainEventPublisher eventPublisher;
+
+    public ProductServiceImpl(ProductRepository repository, DomainEventPublisher eventPublisher) {
         this.repository = repository;
+        this.eventPublisher = eventPublisher;
     }
 
     @Override
@@ -31,7 +37,7 @@ public class ProductServiceImpl implements ProductService {
     public ProductResponse create(ProductRequest request) {
         ProductDetails details = toDetails(request);
         Sku sku = Sku.generate(request.subcategory(), repository.nextSkuSequence());
-        return ProductResponse.from(repository.save(Product.register(sku, details)));
+        return ProductResponse.from(persist(Product.register(sku, details)));
     }
 
     @Override
@@ -42,7 +48,7 @@ public class ProductServiceImpl implements ProductService {
             throw new ObjectOptimisticLockingFailureException(Product.class, id);
         }
         product.update(toDetails(request));
-        return ProductResponse.from(repository.save(product));
+        return ProductResponse.from(persist(product));
     }
 
     @Override
@@ -71,7 +77,7 @@ public class ProductServiceImpl implements ProductService {
     public ProductResponse activate(Long id) {
         Product product = load(id);
         product.activate();
-        return ProductResponse.from(repository.save(product));
+        return ProductResponse.from(persist(product));
     }
 
     @Override
@@ -79,7 +85,7 @@ public class ProductServiceImpl implements ProductService {
     public ProductResponse deactivate(Long id) {
         Product product = load(id);
         product.deactivate();
-        return ProductResponse.from(repository.save(product));
+        return ProductResponse.from(persist(product));
     }
 
     @Override
@@ -87,7 +93,7 @@ public class ProductServiceImpl implements ProductService {
     public ProductResponse archive(Long id) {
         Product product = load(id);
         product.archive();
-        return ProductResponse.from(repository.save(product));
+        return ProductResponse.from(persist(product));
     }
 
     @Override
@@ -95,7 +101,7 @@ public class ProductServiceImpl implements ProductService {
     public ProductResponse restore(Long id) {
         Product product = load(id);
         product.restore();
-        return ProductResponse.from(repository.save(product));
+        return ProductResponse.from(persist(product));
     }
 
     @Override
@@ -105,6 +111,14 @@ public class ProductServiceImpl implements ProductService {
         return repository.findRevisions(id).stream()
                 .map(revision -> revision.map(ProductResponse::from))
                 .toList();
+    }
+
+    private Product persist(Product product) {
+        List<String> events = product.pullEvents();
+        Product saved = repository.save(product);
+        ProductSnapshot snapshot = ProductSnapshot.from(saved);
+        events.forEach(event -> eventPublisher.publish(EVENT_PREFIX + event, AGGREGATE_TYPE, saved.getId(), snapshot));
+        return saved;
     }
 
     private Product load(Long id) {

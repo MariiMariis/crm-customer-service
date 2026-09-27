@@ -10,6 +10,10 @@ import java.util.Objects;
 
 public class SalesRep extends AggregateRoot {
 
+    public static final String REGISTERED = "salesrep.registered";
+    public static final String UPDATED = "salesrep.updated";
+    public static final String STATUS_CHANGED = "salesrep.status-changed";
+
     private String name;
     private String email;
     private String phone;
@@ -33,6 +37,7 @@ public class SalesRep extends AggregateRoot {
         salesRep.active = true;
         salesRep.applyProfile(name, email, phone, team, role, monthlyQuota);
         salesRep.assignManager(manager);
+        salesRep.recordEvent(REGISTERED);
         return salesRep;
     }
 
@@ -71,6 +76,7 @@ public class SalesRep extends AggregateRoot {
         assertNotArchived();
         applyProfile(name, email, phone, team, role, monthlyQuota);
         assignManager(manager);
+        recordEvent(UPDATED);
     }
 
     public void activate() {
@@ -79,6 +85,7 @@ public class SalesRep extends AggregateRoot {
             throw new BusinessRuleException("o vendedor ja esta ativo");
         }
         active = true;
+        recordEvent(STATUS_CHANGED);
     }
 
     public void deactivate() {
@@ -87,12 +94,20 @@ public class SalesRep extends AggregateRoot {
             throw new BusinessRuleException("o vendedor ja esta inativo");
         }
         active = false;
+        recordEvent(STATUS_CHANGED);
     }
 
     @Override
     public void archive() {
         super.archive();
         active = false;
+        recordEvent(STATUS_CHANGED);
+    }
+
+    @Override
+    public void restore() {
+        super.restore();
+        recordEvent(STATUS_CHANGED);
     }
 
     public boolean canOwnRecords() {

@@ -18,6 +18,10 @@ class AggregateRootTest {
         void change() {
             assertNotArchived();
         }
+
+        void touchWithEvent(String event) {
+            recordEvent(event);
+        }
     }
 
     @Test
@@ -53,6 +57,16 @@ class AggregateRootTest {
 
         assertThat(aggregate.isNew()).isTrue();
         assertThat(aggregate.getVersion()).isNull();
+    }
+
+    @Test
+    void recordedEventsArePulledOnlyOnce() {
+        SampleAggregate aggregate = new SampleAggregate();
+        aggregate.touchWithEvent("sample.created");
+        aggregate.touchWithEvent("sample.updated");
+
+        assertThat(aggregate.pullEvents()).containsExactly("sample.created", "sample.updated");
+        assertThat(aggregate.pullEvents()).isEmpty();
     }
 
     @Test

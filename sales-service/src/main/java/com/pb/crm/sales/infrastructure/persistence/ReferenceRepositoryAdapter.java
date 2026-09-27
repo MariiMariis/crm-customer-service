@@ -6,6 +6,7 @@ import com.pb.crm.sales.domain.reference.ProductRef;
 import com.pb.crm.sales.domain.reference.ReferenceRepository;
 import org.springframework.stereotype.Repository;
 
+import java.time.Instant;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -41,10 +42,14 @@ public class ReferenceRepositoryAdapter implements ReferenceRepository {
     }
 
     @Override
-    public void upsertCompany(CompanyRef company) {
+    public boolean upsertCompany(CompanyRef company, Instant occurredAt) {
         CompanyRefJpaEntity entity = companies.findById(company.id()).orElseGet(() -> new CompanyRefJpaEntity(company.id()));
-        entity.apply(company.displayName(), company.cnpj(), company.ownerId(), company.archived());
+        if (entity.isStaleComparedTo(occurredAt)) {
+            return false;
+        }
+        entity.apply(company.displayName(), company.cnpj(), company.ownerId(), company.archived(), occurredAt);
         companies.save(entity);
+        return true;
     }
 
     @Override
@@ -62,10 +67,14 @@ public class ReferenceRepositoryAdapter implements ReferenceRepository {
     }
 
     @Override
-    public void upsertContact(ContactRef contact) {
+    public boolean upsertContact(ContactRef contact, Instant occurredAt) {
         ContactRefJpaEntity entity = contacts.findById(contact.id()).orElseGet(() -> new ContactRefJpaEntity(contact.id()));
-        entity.apply(contact.companyId(), contact.fullName(), contact.email(), contact.active(), contact.archived());
+        if (entity.isStaleComparedTo(occurredAt)) {
+            return false;
+        }
+        entity.apply(contact.companyId(), contact.fullName(), contact.email(), contact.active(), contact.archived(), occurredAt);
         contacts.save(entity);
+        return true;
     }
 
     @Override
@@ -74,11 +83,15 @@ public class ReferenceRepositoryAdapter implements ReferenceRepository {
     }
 
     @Override
-    public void upsertProduct(ProductRef product) {
+    public boolean upsertProduct(ProductRef product, Instant occurredAt) {
         ProductRefJpaEntity entity = products.findById(product.id()).orElseGet(() -> new ProductRefJpaEntity(product.id()));
+        if (entity.isStaleComparedTo(occurredAt)) {
+            return false;
+        }
         entity.apply(product.sku(), product.name(), product.category(), product.billing(), product.unitPrice(),
-                product.maxDiscountPercent(), product.active(), product.archived());
+                product.maxDiscountPercent(), product.active(), product.archived(), occurredAt);
         products.save(entity);
+        return true;
     }
 
     private static CompanyRef toDomain(CompanyRefJpaEntity entity) {

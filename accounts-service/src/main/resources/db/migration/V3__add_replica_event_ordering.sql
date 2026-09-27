@@ -1,0 +1,1 @@
+ALTER TABLE sales_rep_refs ADD COLUMN last_event_at TIMESTAMP WITH TIME ZONE;

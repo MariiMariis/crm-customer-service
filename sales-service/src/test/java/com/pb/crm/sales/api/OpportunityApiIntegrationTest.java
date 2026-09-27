@@ -9,17 +9,14 @@ import com.pb.crm.sales.domain.reference.ProductRef;
 import com.pb.crm.sales.domain.reference.ReferenceRepository;
 import com.pb.crm.sales.domain.reference.SalesRepRef;
 import com.pb.crm.sales.domain.reference.SalesRepRefRepository;
+import com.pb.crm.sales.support.IntegrationTestSupport;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
-import org.testcontainers.containers.PostgreSQLContainer;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -35,9 +32,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest
-@AutoConfigureMockMvc
-class OpportunityApiIntegrationTest {
+class OpportunityApiIntegrationTest extends IntegrationTestSupport {
 
     private static final long MANAGER_ID = 800L;
     private static final long OWNER_ID = 801L;
@@ -47,13 +42,6 @@ class OpportunityApiIntegrationTest {
     private static final long FOREIGN_CONTACT_ID = 951L;
     private static final long NOTEBOOK_ID = 1000L;
     private static final long SUBSCRIPTION_ID = 1001L;
-
-    @ServiceConnection
-    static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16-alpine");
-
-    static {
-        POSTGRES.start();
-    }
 
     @Autowired
     private MockMvc mockMvc;

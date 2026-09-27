@@ -32,6 +32,9 @@ public class SalesRepRefJpaEntity {
     @Column(name = "synced_at", nullable = false)
     private Instant syncedAt;
 
+    @Column(name = "last_event_at")
+    private Instant lastEventAt;
+
     protected SalesRepRefJpaEntity() {
     }
 
@@ -39,13 +42,18 @@ public class SalesRepRefJpaEntity {
         this.id = id;
     }
 
-    public void apply(String name, String email, Long managerId, boolean active, boolean archived) {
+    public void apply(String name, String email, Long managerId, boolean active, boolean archived, Instant occurredAt) {
         this.name = name;
         this.email = email;
         this.managerId = managerId;
         this.active = active;
         this.archived = archived;
         this.syncedAt = Instant.now();
+        this.lastEventAt = occurredAt;
+    }
+
+    public boolean isStaleComparedTo(Instant occurredAt) {
+        return lastEventAt != null && occurredAt != null && !occurredAt.isAfter(lastEventAt);
     }
 
     public Long getId() {

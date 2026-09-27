@@ -3,6 +3,8 @@ package com.pb.crm.commons.domain;
 import com.pb.crm.commons.error.BusinessRuleException;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 public abstract class AggregateRoot {
 
@@ -10,6 +12,7 @@ public abstract class AggregateRoot {
     private AuditInfo audit = AuditInfo.empty();
     private boolean archived;
     private Instant archivedAt;
+    private final List<String> pendingEvents = new ArrayList<>();
 
     protected AggregateRoot() {
     }
@@ -41,6 +44,16 @@ public abstract class AggregateRoot {
         if (archived) {
             throw new BusinessRuleException("o registro esta arquivado e nao pode ser alterado");
         }
+    }
+
+    protected void recordEvent(String eventName) {
+        pendingEvents.add(eventName);
+    }
+
+    public List<String> pullEvents() {
+        List<String> events = List.copyOf(pendingEvents);
+        pendingEvents.clear();
+        return events;
     }
 
     public boolean isNew() {

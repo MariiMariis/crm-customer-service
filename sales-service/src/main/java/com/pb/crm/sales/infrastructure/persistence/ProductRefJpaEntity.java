@@ -46,6 +46,9 @@ public class ProductRefJpaEntity {
     @Column(name = "synced_at", nullable = false)
     private Instant syncedAt;
 
+    @Column(name = "last_event_at")
+    private Instant lastEventAt;
+
     protected ProductRefJpaEntity() {
     }
 
@@ -60,7 +63,8 @@ public class ProductRefJpaEntity {
                       BigDecimal unitPrice,
                       BigDecimal maxDiscountPercent,
                       boolean active,
-                      boolean archived) {
+                      boolean archived,
+                      Instant occurredAt) {
         this.sku = sku;
         this.name = name;
         this.category = category;
@@ -70,6 +74,11 @@ public class ProductRefJpaEntity {
         this.active = active;
         this.archived = archived;
         this.syncedAt = Instant.now();
+        this.lastEventAt = occurredAt;
+    }
+
+    public boolean isStaleComparedTo(Instant occurredAt) {
+        return lastEventAt != null && occurredAt != null && !occurredAt.isAfter(lastEventAt);
     }
 
     public Long getId() {
