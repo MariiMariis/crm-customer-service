@@ -10,19 +10,19 @@
         <version>0.4.0</version>
     </parent>
 
-    <artifactId>notification-service</artifactId>
-    <name>notification-service</name>
-    <description>Microsservico de notificacoes do CRM (Etapa 4)</description>
+    <artifactId>crm-commons</artifactId>
+    <name>crm-commons</name>
+    <description>Infraestrutura tecnica compartilhada pelos microsservicos do CRM: erros padronizados, ator da requisicao e auditoria</description>
     <packaging>jar</packaging>
 
     <dependencies>
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
+            <artifactId>spring-boot-autoconfigure</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-jpa</artifactId>
+            <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -30,25 +30,15 @@
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-actuator</artifactId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
         </dependency>
-
         <dependency>
-            <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-starter-config</artifactId>
+            <groupId>org.hibernate.orm</groupId>
+            <artifactId>hibernate-envers</artifactId>
         </dependency>
-
         <dependency>
-            <groupId>com.h2database</groupId>
-            <artifactId>h2</artifactId>
-            <scope>runtime</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-devtools</artifactId>
-            <scope>runtime</scope>
-            <optional>true</optional>
+            <groupId>org.springframework.data</groupId>
+            <artifactId>spring-data-envers</artifactId>
         </dependency>
 
         <dependency>
@@ -57,15 +47,4 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
-
-    <build>
-        <finalName>notification-service</finalName>
-        <plugins>
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-            </plugin>
-        </plugins>
-    </build>
-
 </project>

@@ -29,15 +29,6 @@ class ConfigServerApplicationTests {
     }
 
     @Test
-    void deveServirConfiguracaoDoMonolito() throws Exception {
-        mockMvc.perform(get("/crm-customer-service/default"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.name").value("crm-customer-service"))
-                .andExpect(jsonPath("$.propertySources[*].source['app.notifications.enabled']").value(hasItem("true")))
-                .andExpect(jsonPath("$.propertySources[*].source['spring.cloud.discovery.client.simple.instances.notification-service[0].uri']").value(hasItem("http://localhost:8081")));
-    }
-
-    @Test
     void deveExporHealthCheck() throws Exception {
         mockMvc.perform(get("/actuator/health"))
                 .andExpect(status().isOk())

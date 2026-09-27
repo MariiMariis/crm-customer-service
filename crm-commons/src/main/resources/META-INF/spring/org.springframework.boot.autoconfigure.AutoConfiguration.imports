@@ -1,0 +1,3 @@
+com.pb.crm.commons.autoconfigure.CrmWebAutoConfiguration
+com.pb.crm.commons.autoconfigure.CrmAuditAutoConfiguration
+com.pb.crm.commons.autoconfigure.CrmEnversRepositoriesAutoConfiguration
