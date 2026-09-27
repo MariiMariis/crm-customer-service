@@ -1,5 +1,6 @@
 package com.pb.crm.commons.audit;
 
+import com.pb.crm.commons.domain.AuditInfo;
 import jakarta.persistence.Column;
 import jakarta.persistence.EntityListeners;
 import jakarta.persistence.MappedSuperclass;
@@ -38,8 +39,12 @@ public abstract class AuditableEntity {
     @Column(nullable = false)
     private Long version;
 
-    protected void touch() {
+    public void touch() {
         this.updatedAt = Instant.now();
+    }
+
+    public AuditInfo toAuditInfo() {
+        return new AuditInfo(createdAt, updatedAt, createdBy, updatedBy, version);
     }
 
     public Instant getCreatedAt() {

@@ -1,5 +1,6 @@
 package com.pb.crm.commons.web;
 
+import com.pb.crm.commons.domain.PageResult;
 import org.springframework.data.domain.Page;
 
 import java.util.List;
@@ -23,6 +24,19 @@ public record PageResponse<T>(
                 page.getTotalPages(),
                 page.isFirst(),
                 page.isLast()
+        );
+    }
+
+    public static <T> PageResponse<T> from(PageResult<T> result) {
+        int totalPages = result.totalPages();
+        return new PageResponse<>(
+                result.content(),
+                result.page(),
+                result.size(),
+                result.totalElements(),
+                totalPages,
+                result.page() == 0,
+                totalPages == 0 || result.page() >= totalPages - 1
         );
     }
 }
