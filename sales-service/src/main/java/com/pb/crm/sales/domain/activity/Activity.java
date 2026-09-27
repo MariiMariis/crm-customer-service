@@ -9,6 +9,9 @@ import java.time.Instant;
 
 public class Activity extends AggregateRoot {
 
+    public static final String SCHEDULED = "activity.scheduled";
+    public static final String COMPLETED = "activity.completed";
+
     private ActivityType type;
     private String subject;
     private String description;
@@ -44,6 +47,7 @@ public class Activity extends AggregateRoot {
         activity.status = ActivityStatus.PLANNED;
         activity.applyDetails(subject, description, priority, schedule);
         activity.assignOwner(owner);
+        activity.recordEvent(SCHEDULED);
         return activity;
     }
 
@@ -106,6 +110,7 @@ public class Activity extends AggregateRoot {
         this.outcome = result;
         this.durationMinutes = durationMinutes;
         this.completedAt = Instant.now();
+        recordEvent(COMPLETED);
     }
 
     public void cancel(String reason) {

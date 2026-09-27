@@ -9,7 +9,12 @@ import java.time.Instant;
 
 public class Lead extends AggregateRoot {
 
+    public static final String CREATED = "lead.created";
+    public static final String ASSIGNED = "lead.assigned";
+    public static final String QUALIFIED = "lead.qualified";
+    public static final String DISQUALIFIED = "lead.disqualified";
     public static final String CONVERSION_REQUESTED = "lead.conversion-requested";
+    public static final String CONVERTED = "lead.converted";
 
     private LeadDetails details;
     private LeadStatus status;
@@ -30,10 +35,11 @@ public class Lead extends AggregateRoot {
         Lead lead = new Lead();
         lead.status = LeadStatus.NEW;
         lead.details = validate(details);
+        lead.refreshScore();
+        lead.recordEvent(CREATED);
         if (owner != null) {
             lead.assignTo(owner);
         }
-        lead.refreshScore();
         return lead;
     }
 
@@ -90,6 +96,7 @@ public class Lead extends AggregateRoot {
             throw new BusinessRuleException("o lead ja esta atribuido a este vendedor");
         }
         this.ownerId = owner.id();
+        recordEvent(ASSIGNED);
     }
 
     public void markContacted() {
@@ -99,6 +106,7 @@ public class Lead extends AggregateRoot {
     public void qualify() {
         assertHasOwner("qualificar");
         transition(LeadStatus.CONTACTED, LeadStatus.QUALIFIED, "qualificar");
+        recordEvent(QUALIFIED);
     }
 
     public void disqualify(String reason) {
@@ -110,6 +118,7 @@ public class Lead extends AggregateRoot {
         this.status = LeadStatus.UNQUALIFIED;
         this.disqualifyReason = reason.trim();
         refreshScore();
+        recordEvent(DISQUALIFIED);
     }
 
     public void reopen() {
@@ -154,6 +163,7 @@ public class Lead extends AggregateRoot {
         this.convertedOpportunityId = opportunityId;
         this.convertedAt = Instant.now();
         refreshScore();
+        recordEvent(CONVERTED);
     }
 
     public void failConversion(String reason) {

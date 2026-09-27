@@ -10,6 +10,7 @@ import com.pb.crm.sales.application.lead.dto.ConvertLeadRequest;
 import com.pb.crm.sales.application.lead.dto.LeadRequest;
 import com.pb.crm.sales.application.lead.dto.LeadResponse;
 import com.pb.crm.sales.application.lead.dto.LeadStatsResponse;
+import com.pb.crm.sales.application.events.SalesEventPayloads;
 import com.pb.crm.sales.application.lead.events.LeadConversionRequested;
 import com.pb.crm.sales.application.opportunity.OpportunityService;
 import com.pb.crm.sales.domain.lead.ConversionRequest;
@@ -258,10 +259,11 @@ public class LeadServiceImpl implements LeadService {
     private Lead persist(Lead lead) {
         List<String> events = lead.pullEvents();
         Lead saved = leadRepository.save(lead);
+        SalesRepRef owner = saved.getOwnerId() == null ? null : salesRepRefRepository.findById(saved.getOwnerId()).orElse(null);
         for (String event : events) {
             Object payload = Lead.CONVERSION_REQUESTED.equals(event)
                     ? LeadConversionRequested.from(saved)
-                    : LeadResponse.from(saved, null, false);
+                    : SalesEventPayloads.LeadPayload.from(saved, owner);
             eventPublisher.publish(EVENT_PREFIX + event, AGGREGATE_TYPE, saved.getId(), payload);
         }
         return saved;

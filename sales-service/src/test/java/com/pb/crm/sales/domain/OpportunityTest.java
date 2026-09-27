@@ -134,6 +134,22 @@ class OpportunityTest {
     }
 
     @Test
+    void aggregateRecordsBusinessEventsInOrder() {
+        Opportunity opportunity = open();
+        opportunity.addItem(NOTEBOOK, 3, new BigDecimal("20"));
+        opportunity.decideDiscount(MANAGER, OWNER, true, null);
+        opportunity.moveTo(OpportunityStage.PROPOSAL, "ana");
+        opportunity.markWon("ana");
+
+        assertThat(opportunity.pullEvents()).containsExactly(
+                Opportunity.CREATED,
+                Opportunity.DISCOUNT_APPROVAL_REQUESTED,
+                Opportunity.DISCOUNT_DECIDED,
+                Opportunity.STAGE_CHANGED,
+                Opportunity.WON);
+    }
+
+    @Test
     void unsellableProductCannotBeAdded() {
         ProductRef discontinued = new ProductRef(8L, "HW-SRV-000003", "Servidor antigo", "HARDWARE",
                 BillingType.ONE_TIME, BigDecimal.TEN, BigDecimal.ZERO, false, false);

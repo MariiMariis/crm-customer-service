@@ -74,6 +74,17 @@ class CompanyAndContactTest {
     }
 
     @Test
+    void onlyProspectsAndFormerCustomersArePromotedToCustomer() {
+        Company prospect = persistedCompany(false);
+        assertThat(prospect.promoteToCustomer()).isTrue();
+        assertThat(prospect.getProfile().type()).isEqualTo(CompanyType.CUSTOMER);
+        assertThat(prospect.pullEvents()).containsExactly(Company.UPDATED);
+        assertThat(prospect.promoteToCustomer()).isFalse();
+
+        assertThat(persistedCompany(true).promoteToCustomer()).isFalse();
+    }
+
+    @Test
     void contactNormalizesEmailAndLosesPrimaryWhenDeactivatedOrArchived() {
         Contact contact = Contact.register(persistedCompany(false), contactProfile(), true);
 

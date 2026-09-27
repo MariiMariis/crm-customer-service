@@ -53,6 +53,21 @@ public class Company extends AggregateRoot {
         recordEvent(UPDATED);
     }
 
+    public boolean promoteToCustomer() {
+        if (isArchived()) {
+            return false;
+        }
+        CompanyType current = profile.type();
+        if (current != CompanyType.PROSPECT && current != CompanyType.FORMER_CUSTOMER) {
+            return false;
+        }
+        this.profile = new CompanyProfile(profile.legalName(), profile.tradeName(), profile.cnpj(), profile.industry(),
+                profile.size(), profile.employees(), profile.annualRevenue(), profile.website(), profile.phone(),
+                profile.city(), profile.state(), CompanyType.CUSTOMER, profile.notes());
+        recordEvent(UPDATED);
+        return true;
+    }
+
     @Override
     public void archive() {
         super.archive();

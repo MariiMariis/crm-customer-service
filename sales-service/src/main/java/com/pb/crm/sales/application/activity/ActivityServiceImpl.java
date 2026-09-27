@@ -5,6 +5,8 @@ import com.pb.crm.commons.domain.PageQuery;
 import com.pb.crm.commons.domain.PageResult;
 import com.pb.crm.commons.error.BusinessRuleException;
 import com.pb.crm.commons.error.ResourceNotFoundException;
+import com.pb.crm.commons.messaging.DomainEventPublisher;
+import com.pb.crm.sales.application.events.SalesEventPayloads;
 import com.pb.crm.sales.application.activity.dto.ActivityRequest;
 import com.pb.crm.sales.application.activity.dto.ActivityResponse;
 import com.pb.crm.sales.application.activity.dto.ActivitySummaryResponse;
@@ -39,13 +41,16 @@ public class ActivityServiceImpl implements ActivityService {
     private final ActivityRepository activityRepository;
     private final SalesRepRefRepository salesRepRefRepository;
     private final RelatedRecordResolver relatedRecordResolver;
+    private final DomainEventPublisher eventPublisher;
 
     public ActivityServiceImpl(ActivityRepository activityRepository,
                                SalesRepRefRepository salesRepRefRepository,
-                               RelatedRecordResolver relatedRecordResolver) {
+                               RelatedRecordResolver relatedRecordResolver,
+                               DomainEventPublisher eventPublisher) {
         this.activityRepository = activityRepository;
         this.salesRepRefRepository = salesRepRefRepository;
         this.relatedRecordResolver = relatedRecordResolver;
+        this.eventPublisher = eventPublisher;
     }
 
     @Override
@@ -55,7 +60,7 @@ public class ActivityServiceImpl implements ActivityService {
         relatedRecordResolver.requireActive(relatedTo);
         Activity activity = Activity.plan(request.type(), request.subject(), request.description(), request.priority(),
                 relatedTo, loadOwner(request.ownerId()), toSchedule(request));
-        return toResponse(activityRepository.save(activity));
+        return toResponse(persist(activity));
     }
 
     @Override
@@ -74,7 +79,7 @@ public class ActivityServiceImpl implements ActivityService {
         if (!activity.getOwnerId().equals(request.ownerId())) {
             activity.reassign(loadOwner(request.ownerId()));
         }
-        return toResponse(activityRepository.save(activity));
+        return toResponse(persist(activity));
     }
 
     @Override
@@ -132,7 +137,7 @@ public class ActivityServiceImpl implements ActivityService {
     public ActivityResponse complete(Long id, String outcome, Integer durationMinutes) {
         Activity activity = load(id);
         activity.complete(outcome, durationMinutes);
-        return toResponse(activityRepository.save(activity));
+        return toResponse(persist(activity));
     }
 
     @Override
@@ -140,7 +145,7 @@ public class ActivityServiceImpl implements ActivityService {
     public ActivityResponse cancel(Long id, String reason) {
         Activity activity = load(id);
         activity.cancel(reason);
-        return toResponse(activityRepository.save(activity));
+        return toResponse(persist(activity));
     }
 
     @Override
@@ -148,7 +153,7 @@ public class ActivityServiceImpl implements ActivityService {
     public ActivityResponse reopen(Long id) {
         Activity activity = load(id);
         activity.reopen();
-        return toResponse(activityRepository.save(activity));
+        return toResponse(persist(activity));
     }
 
     @Override
@@ -156,7 +161,7 @@ public class ActivityServiceImpl implements ActivityService {
     public ActivityResponse archive(Long id) {
         Activity activity = load(id);
         activity.archive();
-        return toResponse(activityRepository.save(activity));
+        return toResponse(persist(activity));
     }
 
     @Override
@@ -164,7 +169,7 @@ public class ActivityServiceImpl implements ActivityService {
     public ActivityResponse restore(Long id) {
         Activity activity = load(id);
         activity.restore();
-        return toResponse(activityRepository.save(activity));
+        return toResponse(persist(activity));
     }
 
     @Override
@@ -175,6 +180,18 @@ public class ActivityServiceImpl implements ActivityService {
         return activityRepository.findRevisions(id).stream()
                 .map(revision -> revision.map(activity -> ActivityResponse.from(activity, null, null, now)))
                 .toList();
+    }
+
+    private Activity persist(Activity activity) {
+        List<String> events = activity.pullEvents();
+        Activity saved = activityRepository.save(activity);
+        if (!events.isEmpty()) {
+            SalesRepRef owner = salesRepRefRepository.findById(saved.getOwnerId()).orElse(null);
+            SalesEventPayloads.ActivityPayload payload = SalesEventPayloads.ActivityPayload.from(
+                    saved, relatedRecordResolver.nameOf(saved.getRelatedTo()), owner);
+            events.forEach(event -> eventPublisher.publish("sales." + event, "Activity", saved.getId(), payload));
+        }
+        return saved;
     }
 
     private Activity load(Long id) {

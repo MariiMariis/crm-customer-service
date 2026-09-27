@@ -6,6 +6,8 @@ import com.pb.crm.commons.domain.PageQuery;
 import com.pb.crm.commons.domain.PageResult;
 import com.pb.crm.commons.error.BusinessRuleException;
 import com.pb.crm.commons.error.ResourceNotFoundException;
+import com.pb.crm.commons.messaging.DomainEventPublisher;
+import com.pb.crm.sales.application.events.SalesEventPayloads;
 import com.pb.crm.sales.application.opportunity.dto.OpportunityItemRequest;
 import com.pb.crm.sales.application.opportunity.dto.OpportunityRequest;
 import com.pb.crm.sales.application.opportunity.dto.OpportunityResponse;
@@ -45,13 +47,16 @@ public class OpportunityServiceImpl implements OpportunityService {
     private final OpportunityRepository opportunityRepository;
     private final ReferenceRepository referenceRepository;
     private final SalesRepRefRepository salesRepRefRepository;
+    private final DomainEventPublisher eventPublisher;
 
     public OpportunityServiceImpl(OpportunityRepository opportunityRepository,
                                   ReferenceRepository referenceRepository,
-                                  SalesRepRefRepository salesRepRefRepository) {
+                                  SalesRepRefRepository salesRepRefRepository,
+                                  DomainEventPublisher eventPublisher) {
         this.opportunityRepository = opportunityRepository;
         this.referenceRepository = referenceRepository;
         this.salesRepRefRepository = salesRepRefRepository;
+        this.eventPublisher = eventPublisher;
     }
 
     @Override
@@ -61,7 +66,7 @@ public class OpportunityServiceImpl implements OpportunityService {
         ContactRef contact = request.contactId() == null ? null : loadContact(request.contactId());
         Opportunity opportunity = Opportunity.open(toDetails(request), company, contact, loadOwner(request.ownerId()),
                 null, RequestActor.current());
-        return toDetail(opportunityRepository.save(opportunity));
+        return toDetail(persist(opportunity));
     }
 
     @Override
@@ -76,7 +81,7 @@ public class OpportunityServiceImpl implements OpportunityService {
                 lead.getDetails().estimatedValue());
         Opportunity opportunity = Opportunity.open(details, loadCompany(companyId), loadContact(contactId),
                 loadOwner(lead.getOwnerId()), lead.getId(), RequestActor.current());
-        return opportunityRepository.save(opportunity).getId();
+        return persist(opportunity).getId();
     }
 
     @Override
@@ -94,7 +99,7 @@ public class OpportunityServiceImpl implements OpportunityService {
         if (!opportunity.getOwnerId().equals(request.ownerId())) {
             opportunity.reassign(loadOwner(request.ownerId()));
         }
-        return toDetail(opportunityRepository.save(opportunity));
+        return toDetail(persist(opportunity));
     }
 
     @Override
@@ -137,7 +142,7 @@ public class OpportunityServiceImpl implements OpportunityService {
     public OpportunityResponse addItem(Long id, OpportunityItemRequest request) {
         Opportunity opportunity = load(id);
         opportunity.addItem(loadProduct(request.productId()), request.quantity(), request.discountPercent());
-        return toDetail(opportunityRepository.save(opportunity));
+        return toDetail(persist(opportunity));
     }
 
     @Override
@@ -145,7 +150,7 @@ public class OpportunityServiceImpl implements OpportunityService {
     public OpportunityResponse changeItem(Long id, Long itemId, OpportunityItemRequest request) {
         Opportunity opportunity = load(id);
         opportunity.changeItem(itemId, request.quantity(), request.discountPercent());
-        return toDetail(opportunityRepository.save(opportunity));
+        return toDetail(persist(opportunity));
     }
 
     @Override
@@ -153,7 +158,7 @@ public class OpportunityServiceImpl implements OpportunityService {
     public OpportunityResponse removeItem(Long id, Long itemId) {
         Opportunity opportunity = load(id);
         opportunity.removeItem(itemId);
-        return toDetail(opportunityRepository.save(opportunity));
+        return toDetail(persist(opportunity));
     }
 
     @Override
@@ -161,7 +166,7 @@ public class OpportunityServiceImpl implements OpportunityService {
     public OpportunityResponse moveTo(Long id, OpportunityStage stage) {
         Opportunity opportunity = load(id);
         opportunity.moveTo(stage, RequestActor.current());
-        return toDetail(opportunityRepository.save(opportunity));
+        return toDetail(persist(opportunity));
     }
 
     @Override
@@ -169,7 +174,7 @@ public class OpportunityServiceImpl implements OpportunityService {
     public OpportunityResponse adjustProbability(Long id, int probability) {
         Opportunity opportunity = load(id);
         opportunity.adjustProbability(probability);
-        return toDetail(opportunityRepository.save(opportunity));
+        return toDetail(persist(opportunity));
     }
 
     @Override
@@ -177,7 +182,7 @@ public class OpportunityServiceImpl implements OpportunityService {
     public OpportunityResponse win(Long id) {
         Opportunity opportunity = load(id);
         opportunity.markWon(RequestActor.current());
-        return toDetail(opportunityRepository.save(opportunity));
+        return toDetail(persist(opportunity));
     }
 
     @Override
@@ -185,7 +190,7 @@ public class OpportunityServiceImpl implements OpportunityService {
     public OpportunityResponse lose(Long id, String reason) {
         Opportunity opportunity = load(id);
         opportunity.markLost(reason, RequestActor.current());
-        return toDetail(opportunityRepository.save(opportunity));
+        return toDetail(persist(opportunity));
     }
 
     @Override
@@ -193,7 +198,7 @@ public class OpportunityServiceImpl implements OpportunityService {
     public OpportunityResponse reopen(Long id) {
         Opportunity opportunity = load(id);
         opportunity.reopen(RequestActor.current());
-        return toDetail(opportunityRepository.save(opportunity));
+        return toDetail(persist(opportunity));
     }
 
     @Override
@@ -204,7 +209,7 @@ public class OpportunityServiceImpl implements OpportunityService {
                 .orElseThrow(() -> new BusinessRuleException("aprovador %d nao encontrado na equipe comercial".formatted(approverId)));
         SalesRepRef owner = salesRepRefRepository.findById(opportunity.getOwnerId()).orElse(null);
         opportunity.decideDiscount(approver, owner, approved, comment);
-        return toDetail(opportunityRepository.save(opportunity));
+        return toDetail(persist(opportunity));
     }
 
     @Override
@@ -212,7 +217,7 @@ public class OpportunityServiceImpl implements OpportunityService {
     public OpportunityResponse archive(Long id) {
         Opportunity opportunity = load(id);
         opportunity.archive();
-        return toDetail(opportunityRepository.save(opportunity));
+        return toDetail(persist(opportunity));
     }
 
     @Override
@@ -220,7 +225,7 @@ public class OpportunityServiceImpl implements OpportunityService {
     public OpportunityResponse restore(Long id) {
         Opportunity opportunity = load(id);
         opportunity.restore();
-        return toDetail(opportunityRepository.save(opportunity));
+        return toDetail(persist(opportunity));
     }
 
     @Override
@@ -230,6 +235,18 @@ public class OpportunityServiceImpl implements OpportunityService {
         return opportunityRepository.findRevisions(id).stream()
                 .map(revision -> revision.map(o -> OpportunityResponse.from(o, OpportunityResponse.Names.none(), false)))
                 .toList();
+    }
+
+    private Opportunity persist(Opportunity opportunity) {
+        List<String> events = opportunity.pullEvents();
+        Opportunity saved = opportunityRepository.save(opportunity);
+        if (!events.isEmpty()) {
+            String companyName = referenceRepository.findCompany(saved.getCompanyId()).map(CompanyRef::displayName).orElse(null);
+            SalesRepRef owner = salesRepRefRepository.findById(saved.getOwnerId()).orElse(null);
+            SalesEventPayloads.OpportunityPayload payload = SalesEventPayloads.OpportunityPayload.from(saved, companyName, owner);
+            events.forEach(event -> eventPublisher.publish("sales." + event, "Opportunity", saved.getId(), payload));
+        }
+        return saved;
     }
 
     private Opportunity load(Long id) {

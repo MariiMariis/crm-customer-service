@@ -18,6 +18,13 @@ import java.util.Objects;
 
 public class Opportunity extends AggregateRoot {
 
+    public static final String CREATED = "opportunity.created";
+    public static final String STAGE_CHANGED = "opportunity.stage-changed";
+    public static final String WON = "opportunity.won";
+    public static final String LOST = "opportunity.lost";
+    public static final String DISCOUNT_APPROVAL_REQUESTED = "opportunity.discount-approval-requested";
+    public static final String DISCOUNT_DECIDED = "opportunity.discount-decided";
+
     public static final int MIN_TERM_MONTHS = 1;
     public static final int MAX_TERM_MONTHS = 60;
 
@@ -55,6 +62,7 @@ public class Opportunity extends AggregateRoot {
         opportunity.probability = OpportunityStage.PROSPECTING.defaultProbability();
         opportunity.discountApproval = DiscountApprovalStatus.NOT_REQUIRED;
         opportunity.record(null, OpportunityStage.PROSPECTING, "abertura da oportunidade", actor);
+        opportunity.recordEvent(CREATED);
         return opportunity;
     }
 
@@ -145,6 +153,7 @@ public class Opportunity extends AggregateRoot {
         stage = target;
         probability = target.defaultProbability();
         record(previous, target, null, actor);
+        recordEvent(STAGE_CHANGED);
     }
 
     public void adjustProbability(int newProbability) {
@@ -165,6 +174,7 @@ public class Opportunity extends AggregateRoot {
                     .formatted(discountApproval));
         }
         close(OpportunityStage.WON, null, actor);
+        recordEvent(WON);
     }
 
     public void markLost(String reason, String actor) {
@@ -173,6 +183,7 @@ public class Opportunity extends AggregateRoot {
             throw new IllegalArgumentException("o motivo da perda e obrigatorio");
         }
         close(OpportunityStage.LOST, reason.trim(), actor);
+        recordEvent(LOST);
     }
 
     public void reopen(String actor) {
@@ -187,6 +198,7 @@ public class Opportunity extends AggregateRoot {
         lossReason = null;
         closedAt = null;
         record(previous, target, "reabertura", actor);
+        recordEvent(STAGE_CHANGED);
     }
 
     public void decideDiscount(SalesRepRef approver, SalesRepRef owner, boolean approved, String comment) {
@@ -204,6 +216,7 @@ public class Opportunity extends AggregateRoot {
         this.approvalDecidedBy = approver.id();
         this.approvalComment = comment == null || comment.isBlank() ? null : comment.trim();
         this.approvalDecidedAt = Instant.now();
+        recordEvent(DISCOUNT_DECIDED);
     }
 
     public BigDecimal oneTimeValue() {
@@ -233,6 +246,7 @@ public class Opportunity extends AggregateRoot {
     private void reevaluateDiscountApproval() {
         if (hasItemAboveDiscountLimit()) {
             discountApproval = DiscountApprovalStatus.PENDING;
+            recordEvent(DISCOUNT_APPROVAL_REQUESTED);
         } else {
             discountApproval = DiscountApprovalStatus.NOT_REQUIRED;
         }

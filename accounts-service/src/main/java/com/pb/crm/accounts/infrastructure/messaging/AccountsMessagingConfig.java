@@ -11,6 +11,13 @@ public class AccountsMessagingConfig {
 
     public static final String SALES_REP_REPLICA_QUEUE = "accounts.replica.salesrep";
     public static final String LEAD_CONVERSION_QUEUE = "accounts.saga.lead-conversion";
+    public static final String CUSTOMER_LIFECYCLE_QUEUE = "accounts.customer-lifecycle";
+
+    @Bean
+    public Declarables customerLifecycleQueue(MessagingTopology topology) {
+        return topology.consumer(ConsumerQueue.of(CUSTOMER_LIFECYCLE_QUEUE,
+                ConsumerQueue.on("sales.events", "sales.opportunity.won")));
+    }
 
     @Bean
     public Declarables leadConversionQueue(MessagingTopology topology) {
