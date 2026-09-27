@@ -30,10 +30,10 @@ public record LeadScore(int total, List<ScoreFactor> factors) {
         if (containsAny(title, EXECUTIVE_TITLES)) {
             factors.add(new ScoreFactor("cargo executivo (C-level/diretoria)", 20));
         } else if (containsAny(title, MANAGER_TITLES)) {
-            factors.add(new ScoreFactor("cargo de gestao", 10));
+            factors.add(new ScoreFactor("cargo de gestão", 10));
         }
         if (details.source() != null && details.source().scorePoints() > 0) {
-            factors.add(new ScoreFactor("origem " + details.source(), details.source().scorePoints()));
+            factors.add(new ScoreFactor("origem " + details.source().label(), details.source().scorePoints()));
         }
         BigDecimal value = details.estimatedValue();
         if (value != null) {
