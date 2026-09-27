@@ -58,9 +58,9 @@ public class SalesRepController {
             @RequestParam(required = false) Long managerId,
             @RequestParam(defaultValue = "false") boolean includeArchived,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(name = "pageSize", defaultValue = "20") int pageSize) {
         SalesRepCriteria criteria = new SalesRepCriteria(term, team, role, active, managerId, includeArchived);
-        return ResponseEntity.ok(PageResponse.from(service.search(criteria, new PageQuery(page, size))));
+        return ResponseEntity.ok(PageResponse.from(service.search(criteria, new PageQuery(page, pageSize))));
     }
 
     @PostMapping("/{id}/activate")

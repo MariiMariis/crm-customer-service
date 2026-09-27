@@ -8,7 +8,6 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -28,7 +27,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc
-@ActiveProfiles("test")
 @Testcontainers
 class SalesRepApiIntegrationTest {
 
@@ -189,12 +187,12 @@ class SalesRepApiIntegrationTest {
         mockMvc.perform(get("/api/sales-reps")
                         .param("team", "INSIDE_SALES")
                         .param("q", "joao")
-                        .param("size", "5"))
+                        .param("pageSize", "5"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.size").value(5))
                 .andExpect(jsonPath("$.content[0].team").value("INSIDE_SALES"));
 
-        mockMvc.perform(get("/api/sales-reps").param("size", "500"))
+        mockMvc.perform(get("/api/sales-reps").param("pageSize", "500"))
                 .andExpect(status().isBadRequest());
 
         mockMvc.perform(get("/api/sales-reps/{id}", 999999))

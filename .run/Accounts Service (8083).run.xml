@@ -1,0 +1,16 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Accounts Service (8083)" type="Application" factoryName="Application">
+    <option name="MAIN_CLASS_NAME" value="com.pb.crm.accounts.AccountsServiceApplication" />
+    <module name="accounts-service" />
+    <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/accounts-service" />
+    <extension name="coverage">
+      <pattern>
+        <option name="PATTERN" value="com.pb.crm.accounts.*" />
+        <option name="ENABLED" value="true" />
+      </pattern>
+    </extension>
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>
