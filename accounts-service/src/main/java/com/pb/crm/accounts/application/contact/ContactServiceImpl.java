@@ -2,6 +2,7 @@ package com.pb.crm.accounts.application.contact;
 
 import com.pb.crm.accounts.application.contact.dto.ContactRequest;
 import com.pb.crm.accounts.application.contact.dto.ContactResponse;
+import com.pb.crm.accounts.application.events.AccountsEventRecorder;
 import com.pb.crm.accounts.domain.company.Company;
 import com.pb.crm.accounts.domain.company.CompanyRepository;
 import com.pb.crm.accounts.domain.contact.Contact;
@@ -27,10 +28,14 @@ public class ContactServiceImpl implements ContactService {
 
     private final ContactRepository contactRepository;
     private final CompanyRepository companyRepository;
+    private final AccountsEventRecorder recorder;
 
-    public ContactServiceImpl(ContactRepository contactRepository, CompanyRepository companyRepository) {
+    public ContactServiceImpl(ContactRepository contactRepository,
+                              CompanyRepository companyRepository,
+                              AccountsEventRecorder recorder) {
         this.contactRepository = contactRepository;
         this.companyRepository = companyRepository;
+        this.recorder = recorder;
     }
 
     @Override
@@ -46,7 +51,7 @@ public class ContactServiceImpl implements ContactService {
             releaseCurrentPrimary(company.getId());
         }
         Contact contact = Contact.register(company, toProfile(request), wantsPrimary || !hasPrimary);
-        return ContactResponse.from(contactRepository.save(contact), company.displayName());
+        return ContactResponse.from(recorder.save(contact), company.displayName());
     }
 
     @Override
@@ -62,7 +67,7 @@ public class ContactServiceImpl implements ContactService {
         }
         boolean active = request.active() == null || request.active();
         contact.update(toProfile(request), active);
-        Contact saved = contactRepository.save(contact);
+        Contact saved = recorder.save(contact);
         if (Boolean.TRUE.equals(request.primary()) && !saved.isPrimary()) {
             saved = promote(saved);
         }
@@ -98,7 +103,7 @@ public class ContactServiceImpl implements ContactService {
     public ContactResponse archive(Long id) {
         Contact contact = load(id);
         contact.archive();
-        return toResponse(contactRepository.save(contact));
+        return toResponse(recorder.save(contact));
     }
 
     @Override
@@ -110,7 +115,7 @@ public class ContactServiceImpl implements ContactService {
             throw new BusinessRuleException("restaure a empresa antes de restaurar os seus contatos");
         }
         contact.restore();
-        return toResponse(contactRepository.save(contact));
+        return toResponse(recorder.save(contact));
     }
 
     @Override
@@ -125,13 +130,13 @@ public class ContactServiceImpl implements ContactService {
     private Contact promote(Contact contact) {
         contact.makePrimary();
         releaseCurrentPrimary(contact.getCompanyId());
-        return contactRepository.save(contact);
+        return recorder.save(contact);
     }
 
     private void releaseCurrentPrimary(Long companyId) {
         contactRepository.findPrimaryByCompany(companyId).ifPresent(current -> {
             current.unmarkPrimary();
-            contactRepository.save(current);
+            recorder.save(current);
         });
     }
 

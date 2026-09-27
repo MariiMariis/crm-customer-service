@@ -4,6 +4,7 @@ import com.pb.crm.commons.domain.AuditRevision;
 import com.pb.crm.commons.domain.PageQuery;
 import com.pb.crm.commons.domain.PageResult;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -19,6 +20,8 @@ public interface LeadRepository {
     boolean existsOpenWithEmail(String email, Long excludedId);
 
     Map<LeadStatus, Long> countByStatus();
+
+    List<Lead> findConvertingRequestedBefore(Instant requestedBefore);
 
     List<AuditRevision<Lead>> findRevisions(Long id);
 }

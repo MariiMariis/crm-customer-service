@@ -43,6 +43,11 @@ public class ContactRepositoryAdapter implements ContactRepository {
     }
 
     @Override
+    public Optional<Contact> findByEmail(String email) {
+        return jpaRepository.findByEmailIgnoreCase(email.trim()).map(mapper::toDomain);
+    }
+
+    @Override
     public PageResult<Contact> search(ContactCriteria criteria, PageQuery page) {
         Sort sort = Sort.by("firstName").ascending().and(Sort.by("lastName")).and(Sort.by("id"));
         Page<ContactJpaEntity> result = jpaRepository.findAll(

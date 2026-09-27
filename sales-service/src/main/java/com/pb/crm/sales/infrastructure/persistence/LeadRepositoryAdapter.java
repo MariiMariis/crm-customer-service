@@ -14,6 +14,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Repository;
 
+import java.time.Instant;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
@@ -73,6 +74,13 @@ public class LeadRepositoryAdapter implements LeadRepository {
             counts.put((LeadStatus) row[0], (Long) row[1]);
         }
         return counts;
+    }
+
+    @Override
+    public List<Lead> findConvertingRequestedBefore(Instant requestedBefore) {
+        return jpaRepository.findByStatusAndConversionRequestedAtBefore(LeadStatus.CONVERTING, requestedBefore).stream()
+                .map(mapper::toDomain)
+                .toList();
     }
 
     @Override

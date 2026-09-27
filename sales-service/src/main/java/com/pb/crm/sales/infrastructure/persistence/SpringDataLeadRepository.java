@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.history.RevisionRepository;
 import org.springframework.data.repository.query.Param;
 
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 
@@ -24,6 +25,8 @@ public interface SpringDataLeadRepository extends JpaRepository<LeadJpaEntity, L
     boolean existsWithEmailInStatuses(@Param("email") String email,
                                       @Param("statuses") Collection<LeadStatus> statuses,
                                       @Param("excludedId") Long excludedId);
+
+    List<LeadJpaEntity> findByStatusAndConversionRequestedAtBefore(LeadStatus status, Instant requestedBefore);
 
     @Query("select l.status, count(l) from LeadJpaEntity l where l.archived = false group by l.status")
     List<Object[]> countGroupedByStatus();

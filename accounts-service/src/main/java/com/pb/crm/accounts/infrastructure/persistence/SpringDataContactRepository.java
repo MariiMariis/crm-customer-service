@@ -17,6 +17,8 @@ public interface SpringDataContactRepository extends JpaRepository<ContactJpaEnt
 
     long countByCompanyIdAndArchivedFalse(Long companyId);
 
+    Optional<ContactJpaEntity> findByEmailIgnoreCase(String email);
+
     boolean existsByEmailIgnoreCase(String email);
 
     boolean existsByEmailIgnoreCaseAndIdNot(String email, Long id);

@@ -9,6 +9,11 @@ import java.time.Instant;
 
 public class Company extends AggregateRoot {
 
+    public static final String CREATED = "company.created";
+    public static final String UPDATED = "company.updated";
+    public static final String ARCHIVED = "company.archived";
+    public static final String RESTORED = "company.restored";
+
     private CompanyProfile profile;
     private Long ownerId;
 
@@ -19,6 +24,7 @@ public class Company extends AggregateRoot {
         Company company = new Company();
         company.profile = validate(profile);
         company.assignOwner(owner);
+        company.recordEvent(CREATED);
         return company;
     }
 
@@ -38,11 +44,25 @@ public class Company extends AggregateRoot {
     public void update(CompanyProfile profile) {
         assertNotArchived();
         this.profile = validate(profile);
+        recordEvent(UPDATED);
     }
 
     public void reassignOwner(SalesRepRef owner) {
         assertNotArchived();
         assignOwner(owner);
+        recordEvent(UPDATED);
+    }
+
+    @Override
+    public void archive() {
+        super.archive();
+        recordEvent(ARCHIVED);
+    }
+
+    @Override
+    public void restore() {
+        super.restore();
+        recordEvent(RESTORED);
     }
 
     public boolean acceptsNewContacts() {

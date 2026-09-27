@@ -9,6 +9,8 @@ import java.time.Instant;
 
 public class Lead extends AggregateRoot {
 
+    public static final String CONVERSION_REQUESTED = "lead.conversion-requested";
+
     private LeadDetails details;
     private LeadStatus status;
     private int score;
@@ -129,10 +131,14 @@ public class Lead extends AggregateRoot {
         if (request == null) {
             throw new IllegalArgumentException("dados da conversao sao obrigatorios");
         }
+        if (details.email() == null) {
+            throw new BusinessRuleException("informe o e-mail do lead antes de converter; ele sera o contato da empresa");
+        }
         this.status = LeadStatus.CONVERTING;
         this.conversion = request;
         this.conversionFailureReason = null;
         refreshScore();
+        recordEvent(CONVERSION_REQUESTED);
     }
 
     public void completeConversion(Long companyId, Long contactId, Long opportunityId) {

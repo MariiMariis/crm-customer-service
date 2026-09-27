@@ -10,6 +10,13 @@ import org.springframework.context.annotation.Configuration;
 public class AccountsMessagingConfig {
 
     public static final String SALES_REP_REPLICA_QUEUE = "accounts.replica.salesrep";
+    public static final String LEAD_CONVERSION_QUEUE = "accounts.saga.lead-conversion";
+
+    @Bean
+    public Declarables leadConversionQueue(MessagingTopology topology) {
+        return topology.consumer(ConsumerQueue.of(LEAD_CONVERSION_QUEUE,
+                ConsumerQueue.on("sales.events", "sales.lead.conversion-requested")));
+    }
 
     @Bean
     public Declarables salesRepReplicaQueue(MessagingTopology topology) {

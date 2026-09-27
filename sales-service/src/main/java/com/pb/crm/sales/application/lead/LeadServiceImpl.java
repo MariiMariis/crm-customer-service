@@ -5,10 +5,12 @@ import com.pb.crm.commons.domain.PageQuery;
 import com.pb.crm.commons.domain.PageResult;
 import com.pb.crm.commons.error.BusinessRuleException;
 import com.pb.crm.commons.error.ResourceNotFoundException;
+import com.pb.crm.commons.messaging.DomainEventPublisher;
 import com.pb.crm.sales.application.lead.dto.ConvertLeadRequest;
 import com.pb.crm.sales.application.lead.dto.LeadRequest;
 import com.pb.crm.sales.application.lead.dto.LeadResponse;
 import com.pb.crm.sales.application.lead.dto.LeadStatsResponse;
+import com.pb.crm.sales.application.lead.events.LeadConversionRequested;
 import com.pb.crm.sales.application.opportunity.OpportunityService;
 import com.pb.crm.sales.domain.lead.ConversionRequest;
 import com.pb.crm.sales.domain.lead.Lead;
@@ -18,10 +20,13 @@ import com.pb.crm.sales.domain.lead.LeadRepository;
 import com.pb.crm.sales.domain.lead.LeadStatus;
 import com.pb.crm.sales.domain.reference.SalesRepRef;
 import com.pb.crm.sales.domain.reference.SalesRepRefRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -31,16 +36,23 @@ import java.util.stream.Collectors;
 @Service
 public class LeadServiceImpl implements LeadService {
 
+    private static final Logger log = LoggerFactory.getLogger(LeadServiceImpl.class);
+    private static final String EVENT_PREFIX = "sales.";
+    private static final String AGGREGATE_TYPE = "Lead";
+
     private final LeadRepository leadRepository;
     private final SalesRepRefRepository salesRepRefRepository;
     private final OpportunityService opportunityService;
+    private final DomainEventPublisher eventPublisher;
 
     public LeadServiceImpl(LeadRepository leadRepository,
                            SalesRepRefRepository salesRepRefRepository,
-                           OpportunityService opportunityService) {
+                           OpportunityService opportunityService,
+                           DomainEventPublisher eventPublisher) {
         this.leadRepository = leadRepository;
         this.salesRepRefRepository = salesRepRefRepository;
         this.opportunityService = opportunityService;
+        this.eventPublisher = eventPublisher;
     }
 
     @Override
@@ -49,7 +61,7 @@ public class LeadServiceImpl implements LeadService {
         LeadDetails details = toDetails(request);
         assertEmailAvailable(details.email(), null);
         SalesRepRef owner = request.ownerId() == null ? null : resolveOwner(request.ownerId());
-        return toDetail(leadRepository.save(Lead.capture(details, owner)));
+        return toDetail(persist(Lead.capture(details, owner)));
     }
 
     @Override
@@ -65,7 +77,7 @@ public class LeadServiceImpl implements LeadService {
         if (request.ownerId() != null && !request.ownerId().equals(lead.getOwnerId())) {
             lead.assignTo(resolveOwner(request.ownerId()));
         }
-        return toDetail(leadRepository.save(lead));
+        return toDetail(persist(lead));
     }
 
     @Override
@@ -100,7 +112,7 @@ public class LeadServiceImpl implements LeadService {
     public LeadResponse assign(Long id, Long ownerId) {
         Lead lead = load(id);
         lead.assignTo(resolveOwner(ownerId));
-        return toDetail(leadRepository.save(lead));
+        return toDetail(persist(lead));
     }
 
     @Override
@@ -108,7 +120,7 @@ public class LeadServiceImpl implements LeadService {
     public LeadResponse markContacted(Long id) {
         Lead lead = load(id);
         lead.markContacted();
-        return toDetail(leadRepository.save(lead));
+        return toDetail(persist(lead));
     }
 
     @Override
@@ -116,7 +128,7 @@ public class LeadServiceImpl implements LeadService {
     public LeadResponse qualify(Long id) {
         Lead lead = load(id);
         lead.qualify();
-        return toDetail(leadRepository.save(lead));
+        return toDetail(persist(lead));
     }
 
     @Override
@@ -124,7 +136,7 @@ public class LeadServiceImpl implements LeadService {
     public LeadResponse disqualify(Long id, String reason) {
         Lead lead = load(id);
         lead.disqualify(reason);
-        return toDetail(leadRepository.save(lead));
+        return toDetail(persist(lead));
     }
 
     @Override
@@ -135,7 +147,7 @@ public class LeadServiceImpl implements LeadService {
             assertEmailAvailable(lead.getDetails().email(), id);
         }
         lead.reopen();
-        return toDetail(leadRepository.save(lead));
+        return toDetail(persist(lead));
     }
 
     @Override
@@ -153,7 +165,7 @@ public class LeadServiceImpl implements LeadService {
                 request.expectedCloseDate(),
                 null
         ));
-        return toDetail(leadRepository.save(lead));
+        return toDetail(persist(lead));
     }
 
     @Override
@@ -167,7 +179,7 @@ public class LeadServiceImpl implements LeadService {
                 ? opportunityService.openFromLead(lead, companyId, contactId)
                 : null;
         lead.completeConversion(companyId, contactId, opportunityId);
-        return toDetail(leadRepository.save(lead));
+        return toDetail(persist(lead));
     }
 
     @Override
@@ -175,7 +187,44 @@ public class LeadServiceImpl implements LeadService {
     public LeadResponse failConversion(Long id, String reason) {
         Lead lead = load(id);
         lead.failConversion(reason);
-        return toDetail(leadRepository.save(lead));
+        return toDetail(persist(lead));
+    }
+
+    @Override
+    @Transactional
+    public boolean applyProvisionedAccount(Long id, Long companyId, Long contactId) {
+        Lead lead = load(id);
+        if (lead.getStatus() != LeadStatus.CONVERTING) {
+            log.warn("Resposta de conta provisionada ignorada: lead #{} esta em {}", id, lead.getStatus());
+            return false;
+        }
+        completeConversion(id, companyId, contactId);
+        return true;
+    }
+
+    @Override
+    @Transactional
+    public boolean applyRejectedAccount(Long id, String reason) {
+        Lead lead = load(id);
+        if (lead.getStatus() != LeadStatus.CONVERTING) {
+            log.warn("Rejeicao de conta ignorada: lead #{} esta em {}", id, lead.getStatus());
+            return false;
+        }
+        lead.failConversion(reason);
+        persist(lead);
+        return true;
+    }
+
+    @Override
+    @Transactional
+    public int expireStaleConversions(Instant requestedBefore) {
+        List<Lead> stale = leadRepository.findConvertingRequestedBefore(requestedBefore);
+        for (Lead lead : stale) {
+            lead.failConversion("tempo esgotado aguardando a resposta do servico de contas");
+            persist(lead);
+            log.warn("Conversao do lead #{} expirada e compensada (voltou para QUALIFIED)", lead.getId());
+        }
+        return stale.size();
     }
 
     @Override
@@ -183,7 +232,7 @@ public class LeadServiceImpl implements LeadService {
     public LeadResponse archive(Long id) {
         Lead lead = load(id);
         lead.archive();
-        return toDetail(leadRepository.save(lead));
+        return toDetail(persist(lead));
     }
 
     @Override
@@ -194,7 +243,7 @@ public class LeadServiceImpl implements LeadService {
             assertEmailAvailable(lead.getDetails().email(), id);
         }
         lead.restore();
-        return toDetail(leadRepository.save(lead));
+        return toDetail(persist(lead));
     }
 
     @Override
@@ -204,6 +253,18 @@ public class LeadServiceImpl implements LeadService {
         return leadRepository.findRevisions(id).stream()
                 .map(revision -> revision.map(lead -> LeadResponse.from(lead, null, false)))
                 .toList();
+    }
+
+    private Lead persist(Lead lead) {
+        List<String> events = lead.pullEvents();
+        Lead saved = leadRepository.save(lead);
+        for (String event : events) {
+            Object payload = Lead.CONVERSION_REQUESTED.equals(event)
+                    ? LeadConversionRequested.from(saved)
+                    : LeadResponse.from(saved, null, false);
+            eventPublisher.publish(EVENT_PREFIX + event, AGGREGATE_TYPE, saved.getId(), payload);
+        }
+        return saved;
     }
 
     private Lead load(Long id) {

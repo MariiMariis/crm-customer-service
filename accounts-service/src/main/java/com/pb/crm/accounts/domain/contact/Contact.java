@@ -9,6 +9,11 @@ import java.time.Instant;
 
 public class Contact extends AggregateRoot {
 
+    public static final String CREATED = "contact.created";
+    public static final String UPDATED = "contact.updated";
+    public static final String ARCHIVED = "contact.archived";
+    public static final String RESTORED = "contact.restored";
+
     private Long companyId;
     private ContactProfile profile;
     private boolean primary;
@@ -29,6 +34,7 @@ public class Contact extends AggregateRoot {
         contact.profile = validate(profile);
         contact.active = true;
         contact.primary = primary;
+        contact.recordEvent(CREATED);
         return contact;
     }
 
@@ -56,6 +62,7 @@ public class Contact extends AggregateRoot {
         if (!active) {
             this.primary = false;
         }
+        recordEvent(UPDATED);
     }
 
     public void makePrimary() {
@@ -67,16 +74,25 @@ public class Contact extends AggregateRoot {
             throw new BusinessRuleException("o contato ja e o principal da empresa");
         }
         primary = true;
+        recordEvent(UPDATED);
     }
 
     public void unmarkPrimary() {
         primary = false;
+        recordEvent(UPDATED);
     }
 
     @Override
     public void archive() {
         super.archive();
         primary = false;
+        recordEvent(ARCHIVED);
+    }
+
+    @Override
+    public void restore() {
+        super.restore();
+        recordEvent(RESTORED);
     }
 
     private static ContactProfile validate(ContactProfile profile) {

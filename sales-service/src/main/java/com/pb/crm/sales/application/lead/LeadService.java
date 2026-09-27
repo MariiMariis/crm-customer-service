@@ -9,6 +9,7 @@ import com.pb.crm.sales.application.lead.dto.LeadResponse;
 import com.pb.crm.sales.application.lead.dto.LeadStatsResponse;
 import com.pb.crm.sales.domain.lead.LeadCriteria;
 
+import java.time.Instant;
 import java.util.List;
 
 public interface LeadService {
@@ -38,6 +39,12 @@ public interface LeadService {
     LeadResponse completeConversion(Long id, Long companyId, Long contactId);
 
     LeadResponse failConversion(Long id, String reason);
+
+    boolean applyProvisionedAccount(Long id, Long companyId, Long contactId);
+
+    boolean applyRejectedAccount(Long id, String reason);
+
+    int expireStaleConversions(Instant requestedBefore);
 
     LeadResponse archive(Long id);
 

@@ -15,6 +15,8 @@ public interface CompanyRepository {
 
     Optional<Company> findById(Long id);
 
+    Optional<Company> findByCnpj(Cnpj cnpj);
+
     Map<Long, Company> findAllByIds(Collection<Long> ids);
 
     PageResult<Company> search(CompanyCriteria criteria, PageQuery page);

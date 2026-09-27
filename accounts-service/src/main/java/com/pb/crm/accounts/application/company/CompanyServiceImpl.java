@@ -2,6 +2,7 @@ package com.pb.crm.accounts.application.company;
 
 import com.pb.crm.accounts.application.company.dto.CompanyRequest;
 import com.pb.crm.accounts.application.company.dto.CompanyResponse;
+import com.pb.crm.accounts.application.events.AccountsEventRecorder;
 import com.pb.crm.accounts.domain.company.Cnpj;
 import com.pb.crm.accounts.domain.company.Company;
 import com.pb.crm.accounts.domain.company.CompanyCriteria;
@@ -32,13 +33,16 @@ public class CompanyServiceImpl implements CompanyService {
     private final CompanyRepository companyRepository;
     private final ContactRepository contactRepository;
     private final SalesRepRefRepository salesRepRefRepository;
+    private final AccountsEventRecorder recorder;
 
     public CompanyServiceImpl(CompanyRepository companyRepository,
                               ContactRepository contactRepository,
-                              SalesRepRefRepository salesRepRefRepository) {
+                              SalesRepRefRepository salesRepRefRepository,
+                              AccountsEventRecorder recorder) {
         this.companyRepository = companyRepository;
         this.contactRepository = contactRepository;
         this.salesRepRefRepository = salesRepRefRepository;
+        this.recorder = recorder;
     }
 
     @Override
@@ -49,7 +53,7 @@ public class CompanyServiceImpl implements CompanyService {
             throw new BusinessRuleException("ja existe uma empresa cadastrada com este CNPJ");
         }
         Company company = Company.register(profile, resolveOwner(request.ownerId()));
-        return toDetail(companyRepository.save(company));
+        return toDetail(recorder.save(company));
     }
 
     @Override
@@ -65,7 +69,7 @@ public class CompanyServiceImpl implements CompanyService {
         if (!Objects.equals(request.ownerId(), company.getOwnerId())) {
             company.reassignOwner(resolveOwner(request.ownerId()));
         }
-        return toDetail(companyRepository.save(company));
+        return toDetail(recorder.save(company));
     }
 
     @Override
@@ -91,10 +95,10 @@ public class CompanyServiceImpl implements CompanyService {
     public CompanyResponse archive(Long id) {
         Company company = load(id);
         company.archive();
-        Company saved = companyRepository.save(company);
+        Company saved = recorder.save(company);
         for (Contact contact : contactRepository.findUnarchivedByCompany(id)) {
             contact.archive();
-            contactRepository.save(contact);
+            recorder.save(contact);
         }
         return toDetail(saved);
     }
@@ -104,7 +108,7 @@ public class CompanyServiceImpl implements CompanyService {
     public CompanyResponse restore(Long id) {
         Company company = load(id);
         company.restore();
-        return toDetail(companyRepository.save(company));
+        return toDetail(recorder.save(company));
     }
 
     @Override

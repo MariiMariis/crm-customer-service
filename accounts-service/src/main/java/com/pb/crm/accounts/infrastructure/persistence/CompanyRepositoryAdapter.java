@@ -49,6 +49,11 @@ public class CompanyRepositoryAdapter implements CompanyRepository {
     }
 
     @Override
+    public Optional<Company> findByCnpj(Cnpj cnpj) {
+        return jpaRepository.findByCnpj(cnpj.value()).map(mapper::toDomain);
+    }
+
+    @Override
     public Map<Long, Company> findAllByIds(Collection<Long> ids) {
         if (ids.isEmpty()) {
             return new HashMap<>();

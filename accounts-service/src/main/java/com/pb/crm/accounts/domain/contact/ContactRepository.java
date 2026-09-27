@@ -13,6 +13,8 @@ public interface ContactRepository {
 
     Optional<Contact> findById(Long id);
 
+    Optional<Contact> findByEmail(String email);
+
     PageResult<Contact> search(ContactCriteria criteria, PageQuery page);
 
     List<Contact> findUnarchivedByCompany(Long companyId);
