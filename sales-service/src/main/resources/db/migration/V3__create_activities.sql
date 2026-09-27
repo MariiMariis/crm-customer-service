@@ -1,0 +1,68 @@
+CREATE SEQUENCE activities_seq START WITH 1 INCREMENT BY 50;
+
+CREATE TABLE activities (
+    id               BIGINT                   NOT NULL,
+    type             VARCHAR(20)              NOT NULL,
+    subject          VARCHAR(160)             NOT NULL,
+    description      VARCHAR(2000),
+    priority         VARCHAR(20)              NOT NULL,
+    related_type     VARCHAR(20)              NOT NULL,
+    related_id       BIGINT                   NOT NULL,
+    owner_id         BIGINT                   NOT NULL,
+    due_at           TIMESTAMP WITH TIME ZONE NOT NULL,
+    starts_at        TIMESTAMP WITH TIME ZONE,
+    ends_at          TIMESTAMP WITH TIME ZONE,
+    location         VARCHAR(300),
+    status           VARCHAR(20)              NOT NULL,
+    outcome          VARCHAR(2000),
+    duration_minutes INTEGER,
+    cancel_reason    VARCHAR(500),
+    completed_at     TIMESTAMP WITH TIME ZONE,
+    archived         BOOLEAN                  NOT NULL DEFAULT FALSE,
+    archived_at      TIMESTAMP WITH TIME ZONE,
+    created_at       TIMESTAMP WITH TIME ZONE NOT NULL,
+    updated_at       TIMESTAMP WITH TIME ZONE NOT NULL,
+    created_by       VARCHAR(120),
+    updated_by       VARCHAR(120),
+    version          BIGINT                   NOT NULL,
+    CONSTRAINT pk_activities PRIMARY KEY (id),
+    CONSTRAINT ck_activities_type CHECK (type IN ('TASK', 'CALL', 'MEETING', 'EMAIL')),
+    CONSTRAINT ck_activities_priority CHECK (priority IN ('LOW', 'NORMAL', 'HIGH')),
+    CONSTRAINT ck_activities_related_type CHECK (related_type IN ('LEAD', 'OPPORTUNITY', 'COMPANY', 'CONTACT')),
+    CONSTRAINT ck_activities_status CHECK (status IN ('PLANNED', 'DONE', 'CANCELED')),
+    CONSTRAINT ck_activities_meeting CHECK (type <> 'MEETING' OR (starts_at IS NOT NULL AND ends_at > starts_at)),
+    CONSTRAINT ck_activities_duration CHECK (duration_minutes IS NULL OR duration_minutes >= 0)
+);
+
+CREATE INDEX idx_activities_owner_due ON activities (owner_id, status, due_at);
+CREATE INDEX idx_activities_related ON activities (related_type, related_id);
+
+CREATE TABLE activities_aud (
+    id               BIGINT   NOT NULL,
+    rev              INTEGER  NOT NULL,
+    revtype          SMALLINT,
+    type             VARCHAR(20),
+    subject          VARCHAR(160),
+    description      VARCHAR(2000),
+    priority         VARCHAR(20),
+    related_type     VARCHAR(20),
+    related_id       BIGINT,
+    owner_id         BIGINT,
+    due_at           TIMESTAMP WITH TIME ZONE,
+    starts_at        TIMESTAMP WITH TIME ZONE,
+    ends_at          TIMESTAMP WITH TIME ZONE,
+    location         VARCHAR(300),
+    status           VARCHAR(20),
+    outcome          VARCHAR(2000),
+    duration_minutes INTEGER,
+    cancel_reason    VARCHAR(500),
+    completed_at     TIMESTAMP WITH TIME ZONE,
+    archived         BOOLEAN,
+    archived_at      TIMESTAMP WITH TIME ZONE,
+    created_at       TIMESTAMP WITH TIME ZONE,
+    updated_at       TIMESTAMP WITH TIME ZONE,
+    created_by       VARCHAR(120),
+    updated_by       VARCHAR(120),
+    CONSTRAINT pk_activities_aud PRIMARY KEY (rev, id),
+    CONSTRAINT fk_activities_aud_revinfo FOREIGN KEY (rev) REFERENCES revinfo (rev)
+);
