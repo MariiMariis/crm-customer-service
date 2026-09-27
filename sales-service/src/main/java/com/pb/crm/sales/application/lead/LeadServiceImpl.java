@@ -9,6 +9,7 @@ import com.pb.crm.sales.application.lead.dto.ConvertLeadRequest;
 import com.pb.crm.sales.application.lead.dto.LeadRequest;
 import com.pb.crm.sales.application.lead.dto.LeadResponse;
 import com.pb.crm.sales.application.lead.dto.LeadStatsResponse;
+import com.pb.crm.sales.application.opportunity.OpportunityService;
 import com.pb.crm.sales.domain.lead.ConversionRequest;
 import com.pb.crm.sales.domain.lead.Lead;
 import com.pb.crm.sales.domain.lead.LeadCriteria;
@@ -32,10 +33,14 @@ public class LeadServiceImpl implements LeadService {
 
     private final LeadRepository leadRepository;
     private final SalesRepRefRepository salesRepRefRepository;
+    private final OpportunityService opportunityService;
 
-    public LeadServiceImpl(LeadRepository leadRepository, SalesRepRefRepository salesRepRefRepository) {
+    public LeadServiceImpl(LeadRepository leadRepository,
+                           SalesRepRefRepository salesRepRefRepository,
+                           OpportunityService opportunityService) {
         this.leadRepository = leadRepository;
         this.salesRepRefRepository = salesRepRefRepository;
+        this.opportunityService = opportunityService;
     }
 
     @Override
@@ -153,8 +158,14 @@ public class LeadServiceImpl implements LeadService {
 
     @Override
     @Transactional
-    public LeadResponse completeConversion(Long id, Long companyId, Long contactId, Long opportunityId) {
+    public LeadResponse completeConversion(Long id, Long companyId, Long contactId) {
         Lead lead = load(id);
+        if (lead.getStatus() != LeadStatus.CONVERTING) {
+            throw new BusinessRuleException("o lead nao esta em conversao");
+        }
+        Long opportunityId = lead.getConversion().createOpportunity()
+                ? opportunityService.openFromLead(lead, companyId, contactId)
+                : null;
         lead.completeConversion(companyId, contactId, opportunityId);
         return toDetail(leadRepository.save(lead));
     }

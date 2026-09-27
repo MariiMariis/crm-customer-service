@@ -35,7 +35,7 @@ public interface LeadService {
 
     LeadResponse requestConversion(Long id, ConvertLeadRequest request);
 
-    LeadResponse completeConversion(Long id, Long companyId, Long contactId, Long opportunityId);
+    LeadResponse completeConversion(Long id, Long companyId, Long contactId);
 
     LeadResponse failConversion(Long id, String reason);
 

@@ -3,6 +3,9 @@ package com.pb.crm.sales.api;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pb.crm.sales.application.lead.LeadService;
+import com.pb.crm.sales.domain.reference.CompanyRef;
+import com.pb.crm.sales.domain.reference.ContactRef;
+import com.pb.crm.sales.domain.reference.ReferenceRepository;
 import com.pb.crm.sales.domain.reference.SalesRepRef;
 import com.pb.crm.sales.domain.reference.SalesRepRefRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -56,10 +59,15 @@ class LeadApiIntegrationTest {
     @Autowired
     private LeadService leadService;
 
+    @Autowired
+    private ReferenceRepository referenceRepository;
+
     @BeforeEach
     void syncSalesReps() {
         salesRepRefRepository.upsert(new SalesRepRef(ANA_ID, "Ana Ribeiro", "ana@pbtech.com.br", null, true, false));
         salesRepRefRepository.upsert(new SalesRepRef(INACTIVE_ID, "Caio Prado", "caio@pbtech.com.br", null, false, false));
+        referenceRepository.upsertCompany(new CompanyRef(11L, "Varejo Mais", "11222333000181", ANA_ID, false));
+        referenceRepository.upsertContact(new ContactRef(22L, 11L, "Marcos Teixeira", "marcos@varejomais.com.br", true, false));
     }
 
     private ResultActions send(MockHttpServletRequestBuilder builder, Object body) throws Exception {
@@ -179,11 +187,12 @@ class LeadApiIntegrationTest {
                 .andExpect(jsonPath("$.conversionFailureReason").value("CNPJ ja pertence a um cliente de outro vendedor"));
 
         send(post("/api/leads/{id}/convert", id), conversionPayload()).andExpect(status().isAccepted());
-        leadService.completeConversion(id, 11L, 22L, null);
+        leadService.completeConversion(id, 11L, 22L);
         mockMvc.perform(get("/api/leads/{id}", id))
                 .andExpect(jsonPath("$.status").value("CONVERTED"))
                 .andExpect(jsonPath("$.convertedCompanyId").value(11))
-                .andExpect(jsonPath("$.convertedContactId").value(22));
+                .andExpect(jsonPath("$.convertedContactId").value(22))
+                .andExpect(jsonPath("$.convertedOpportunityId").isNumber());
     }
 
     @Test
