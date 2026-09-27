@@ -1,113 +1,37 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
-import { getCustomers, getAgents, getTickets } from "@/lib/api";
-import { getNotificationStats } from "@/lib/notificationApi";
-import Badge from "@/components/Badge";
-import ServiceStatus from "@/components/ServiceStatus";
+import { Briefcase, Building2, Columns3, Target } from "lucide-react";
+import { useCurrentUser } from "@/components/providers/CurrentUserProvider";
+import { PageHeader } from "@/components/ui/Layout";
+import { ErrorBanner } from "@/components/ui/Feedback";
 
-export default function DashboardPage() {
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
-    const [customers, setCustomers] = useState([]);
-    const [agents, setAgents] = useState([]);
-    const [tickets, setTickets] = useState([]);
-    const [notificationStats, setNotificationStats] = useState(null);
+const SHORTCUTS = [
+    { href: "/pipeline", label: "Pipeline", description: "Funil de oportunidades em Kanban", icon: Columns3 },
+    { href: "/leads", label: "Leads", description: "Qualifique e converta prospects", icon: Target },
+    { href: "/opportunities", label: "Oportunidades", description: "Propostas, itens e descontos", icon: Briefcase },
+    { href: "/companies", label: "Empresas", description: "Carteira de contas e contatos", icon: Building2 },
+];
 
-    useEffect(() => {
-        Promise.all([getCustomers(), getAgents(), getTickets()])
-            .then(([c, a, t]) => {
-                setCustomers(c);
-                setAgents(a);
-                setTickets(t);
-            })
-            .catch((err) => setError(err.message))
-            .finally(() => setLoading(false));
-        getNotificationStats()
-            .then(setNotificationStats)
-            .catch(() => setNotificationStats(null));
-    }, []);
-
-    const openCount = tickets.filter((t) => t.status === "OPEN").length;
-    const inProgressCount = tickets.filter((t) => t.status === "IN_PROGRESS").length;
-    const recentTickets = [...tickets]
-        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-        .slice(0, 5);
+export default function HomePage() {
+    const { user, error } = useCurrentUser();
 
     return (
         <>
-            <h1>Dashboard</h1>
-            <p className="page-subtitle">Visao geral do atendimento ao cliente</p>
-
-            {error && <div className="error-banner">Nao foi possivel carregar os dados: {error}. Verifique se o back-end esta rodando em http://localhost:8080.</div>}
-
-            {loading ? (
-                <p>Carregando...</p>
-            ) : (
-                <>
-                    <div className="stats-grid">
-                        <div className="stat-card">
-                            <div className="stat-value">{customers.length}</div>
-                            <div className="stat-label">Clientes</div>
-                        </div>
-                        <div className="stat-card">
-                            <div className="stat-value">{agents.length}</div>
-                            <div className="stat-label">Atendentes</div>
-                        </div>
-                        <div className="stat-card">
-                            <div className="stat-value">{tickets.length}</div>
-                            <div className="stat-label">Tickets totais</div>
-                        </div>
-                        <div className="stat-card">
-                            <div className="stat-value">{openCount}</div>
-                            <div className="stat-label">Tickets abertos</div>
-                        </div>
-                        <div className="stat-card">
-                            <div className="stat-value">{inProgressCount}</div>
-                            <div className="stat-label">Em andamento</div>
-                        </div>
-                        <div className="stat-card stat-card-accent">
-                            <div className="stat-value">{notificationStats ? notificationStats.byStatus.PENDING : "-"}</div>
-                            <div className="stat-label">Notificacoes pendentes</div>
-                        </div>
-                        <div className="stat-card stat-card-accent">
-                            <div className="stat-value">{notificationStats ? notificationStats.byStatus.SENT : "-"}</div>
-                            <div className="stat-label">Notificacoes enviadas</div>
-                        </div>
-                    </div>
-
-                    <ServiceStatus />
-
-                    <div className="card">
-                        <h2>Tickets recentes</h2>
-                        {recentTickets.length === 0 ? (
-                            <p className="empty-state">Nenhum ticket cadastrado ainda.</p>
-                        ) : (
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Assunto</th>
-                                        <th>Status</th>
-                                        <th>Prioridade</th>
-                                        <th></th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {recentTickets.map((t) => (
-                                        <tr key={t.id}>
-                                            <td>{t.subject}</td>
-                                            <td><Badge value={t.status} /></td>
-                                            <td><Badge value={t.priority} /></td>
-                                            <td><Link className="link" href={`/tickets/${t.id}`}>ver detalhes</Link></td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        )}
-                    </div>
-                </>
-            )}
+            <PageHeader
+                title={user ? `Olá, ${user.name.split(" ")[0]}` : "Bem-vindo ao Nexo"}
+                subtitle="Acompanhe leads, oportunidades e contas da equipe comercial."
+            />
+            <ErrorBanner error={error} />
+            <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                {SHORTCUTS.map((shortcut) => (
+                    <Link key={shortcut.href} href={shortcut.href} className="card group p-5 transition hover:border-brand-500/50">
+                        <shortcut.icon className="h-6 w-6 text-brand-400" />
+                        <p className="mt-4 font-semibold text-white group-hover:text-brand-300">{shortcut.label}</p>
+                        <p className="mt-1 text-sm text-slate-400">{shortcut.description}</p>
+                    </Link>
+                ))}
+            </div>
         </>
     );
 }

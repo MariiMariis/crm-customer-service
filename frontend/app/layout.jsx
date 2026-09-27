@@ -1,17 +1,19 @@
-import NavBar from "@/components/NavBar";
+import { Inter } from "next/font/google";
+import AppShell from "@/components/layout/AppShell";
 import "./globals.css";
 
+const inter = Inter({ subsets: ["latin"], display: "swap" });
+
 export const metadata = {
-    title: "PB CRM - Customer Service",
-    description: "CRM de atendimento ao cliente",
+    title: "Nexo · CRM",
+    description: "Nexo: cada negócio, conectado. CRM B2B para vendas de software, hardware e serviços de TI",
 };
 
 export default function RootLayout({ children }) {
     return (
-        <html lang="pt-BR">
+        <html lang="pt-BR" className={inter.className}>
             <body>
-                <NavBar />
-                <main className="page-container">{children}</main>
+                <AppShell>{children}</AppShell>
             </body>
         </html>
     );
