@@ -1,0 +1,16 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Carga inicial (seeder)" type="Application" factoryName="Application">
+    <option name="MAIN_CLASS_NAME" value="com.pb.crm.seeder.SeederApplication" />
+    <module name="crm-seeder" />
+    <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/crm-seeder" />
+    <extension name="coverage">
+      <pattern>
+        <option name="PATTERN" value="com.pb.crm.seeder.*" />
+        <option name="ENABLED" value="true" />
+      </pattern>
+    </extension>
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>

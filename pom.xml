@@ -27,6 +27,7 @@
         <module>sales-service</module>
         <module>notification-service</module>
         <module>api-gateway</module>
+        <module>crm-seeder</module>
     </modules>
 
     <properties>
