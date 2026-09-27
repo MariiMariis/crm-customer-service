@@ -1,0 +1,112 @@
+name: pb-crm
+
+services:
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: pb-crm-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-crm}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-crm}
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  postgres-team:
+    image: postgres:16-alpine
+    container_name: pb-crm-postgres-team
+    environment:
+      POSTGRES_DB: team_db
+      POSTGRES_USER: ${TEAM_DB_USER:-team}
+      POSTGRES_PASSWORD: ${TEAM_DB_PASSWORD:-team}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-team-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  postgres-accounts:
+    image: postgres:16-alpine
+    container_name: pb-crm-postgres-accounts
+    environment:
+      POSTGRES_DB: accounts_db
+      POSTGRES_USER: ${ACCOUNTS_DB_USER:-accounts}
+      POSTGRES_PASSWORD: ${ACCOUNTS_DB_PASSWORD:-accounts}
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres-accounts-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  postgres-catalog:
+    image: postgres:16-alpine
+    container_name: pb-crm-postgres-catalog
+    environment:
+      POSTGRES_DB: catalog_db
+      POSTGRES_USER: ${CATALOG_DB_USER:-catalog}
+      POSTGRES_PASSWORD: ${CATALOG_DB_PASSWORD:-catalog}
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres-catalog-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  postgres-sales:
+    image: postgres:16-alpine
+    container_name: pb-crm-postgres-sales
+    environment:
+      POSTGRES_DB: sales_db
+      POSTGRES_USER: ${SALES_DB_USER:-sales}
+      POSTGRES_PASSWORD: ${SALES_DB_PASSWORD:-sales}
+    ports:
+      - "5435:5432"
+    volumes:
+      - postgres-sales-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  postgres-notification:
+    image: postgres:16-alpine
+    container_name: pb-crm-postgres-notification
+    environment:
+      POSTGRES_DB: notification_db
+      POSTGRES_USER: ${NOTIFICATION_DB_USER:-notification}
+      POSTGRES_PASSWORD: ${NOTIFICATION_DB_PASSWORD:-notification}
+    ports:
+      - "5436:5432"
+    volumes:
+      - postgres-notification-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  rabbitmq-data:
+  postgres-team-data:
+  postgres-accounts-data:
+  postgres-catalog-data:
+  postgres-sales-data:
+  postgres-notification-data:
