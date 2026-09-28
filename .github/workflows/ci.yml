@@ -1,0 +1,167 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+    tags-ignore: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+
+jobs:
+  backend:
+    name: Backend (build, testes e cobertura)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Build e testes (unitarios e de integracao com Testcontainers)
+        run: ./mvnw -B -ntp verify
+
+      - name: Relatorio de testes
+        if: always()
+        uses: mikepenz/action-junit-report@v6
+        with:
+          report_paths: "**/target/surefire-reports/TEST-*.xml"
+          check_name: Resultado dos testes do backend
+          include_passed: true
+          detailed_summary: true
+
+      - name: Resumo de cobertura
+        if: always()
+        run: python3 .github/scripts/coverage-summary.py
+
+      - name: Comentario de cobertura no PR
+        if: github.event_name == 'pull_request'
+        uses: madrapps/jacoco-report@v1.8.0
+        with:
+          paths: ${{ github.workspace }}/**/target/site/jacoco/jacoco.xml
+          token: ${{ secrets.GITHUB_TOKEN }}
+          title: Cobertura de testes
+          min-coverage-overall: 60
+
+      - name: Publica relatorios
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: relatorios-backend
+          path: |
+            **/target/surefire-reports/
+            **/target/site/jacoco/
+          retention-days: 14
+
+  frontend:
+    name: Frontend (build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: npm ci
+
+      - name: Build de producao
+        run: npm run build
+        env:
+          NEXT_PUBLIC_API_URL: /api
+          NEXT_TELEMETRY_DISABLED: "1"
+
+  images:
+    name: Imagem ${{ matrix.image }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: config-server
+            dockerfile: config-server/Dockerfile
+            context: .
+          - image: team-service
+            dockerfile: team-service/Dockerfile
+            context: .
+          - image: accounts-service
+            dockerfile: accounts-service/Dockerfile
+            context: .
+          - image: catalog-service
+            dockerfile: catalog-service/Dockerfile
+            context: .
+          - image: sales-service
+            dockerfile: sales-service/Dockerfile
+            context: .
+          - image: notification-service
+            dockerfile: notification-service/Dockerfile
+            context: .
+          - image: api-gateway
+            dockerfile: api-gateway/Dockerfile
+            context: .
+          - image: seeder
+            dockerfile: crm-seeder/Dockerfile
+            context: .
+          - image: frontend
+            dockerfile: frontend/Dockerfile
+            context: frontend
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: docker/setup-buildx-action@v4
+
+      - name: Build da imagem (sem publicar)
+        uses: docker/build-push-action@v7
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          push: false
+          tags: mariimariis/crm-${{ matrix.image }}:ci
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+
+  manifests:
+    name: Manifests (Kustomize e Compose)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      KUBECONFORM_VERSION: v0.8.0
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Instala kubeconform
+        run: |
+          curl -sSL "https://github.com/yannh/kubeconform/releases/download/${KUBECONFORM_VERSION}/kubeconform-linux-amd64.tar.gz" | tar xz -C /usr/local/bin kubeconform
+
+      - name: Renderiza e valida o Kubernetes
+        run: |
+          for target in k8s/overlays/prod observability; do
+            echo "::group::$target"
+            kubectl kustomize "$target" > rendered.yaml
+            kubeconform -strict -summary -kubernetes-version 1.33.0 rendered.yaml
+            echo "::endgroup::"
+          done
+
+      - name: Valida o Docker Compose
+        run: |
+          docker compose -f docker-compose.yml config --quiet
+          docker compose -f docker-compose.full.yml config --quiet
