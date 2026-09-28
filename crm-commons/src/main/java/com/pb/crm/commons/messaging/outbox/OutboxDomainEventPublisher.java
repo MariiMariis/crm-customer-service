@@ -59,7 +59,8 @@ public class OutboxDomainEventPublisher implements DomainEventPublisher {
                 aggregateType,
                 String.valueOf(aggregateId),
                 serialize(envelope),
-                now
+                now,
+                OutboxTracing.currentTraceparent()
         ));
     }
 

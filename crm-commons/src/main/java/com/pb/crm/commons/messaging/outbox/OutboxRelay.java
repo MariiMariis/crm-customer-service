@@ -2,6 +2,8 @@ package com.pb.crm.commons.messaging.outbox;
 
 import com.pb.crm.commons.messaging.MessageHeaders;
 import com.pb.crm.commons.messaging.MessagingProperties;
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.context.Scope;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.core.Message;
@@ -45,19 +47,29 @@ public class OutboxRelay {
     }
 
     public int relayPending() {
+        try (Scope ignored = OutboxTracing.untracedPolling()) {
+            return relayBatch();
+        }
+    }
+
+    private int relayBatch() {
         Integer published = transactionTemplate.execute(status -> {
             List<OutboxEvent> batch = repository.lockPendingBatch(properties.outbox().batchSize());
             int count = 0;
             for (OutboxEvent event : batch) {
-                try {
+                Span span = OutboxTracing.startPublishSpan(event);
+                try (Scope ignored = span.makeCurrent()) {
                     send(event);
                     event.markPublished();
                     count++;
                 } catch (Exception ex) {
+                    OutboxTracing.recordFailure(span, ex);
                     event.markFailedAttempt(rootMessage(ex));
                     log.warn("Falha ao publicar o evento {} ({}) na tentativa {}: {}",
                             event.getId(), event.getEventType(), event.getAttempts(), rootMessage(ex));
                     break;
+                } finally {
+                    span.end();
                 }
             }
             return count;

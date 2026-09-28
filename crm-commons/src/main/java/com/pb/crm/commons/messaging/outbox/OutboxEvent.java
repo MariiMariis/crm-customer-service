@@ -56,6 +56,9 @@ public class OutboxEvent {
     @Column(name = "published_at")
     private Instant publishedAt;
 
+    @Column(length = 55)
+    private String traceparent;
+
     protected OutboxEvent() {
     }
 
@@ -66,7 +69,8 @@ public class OutboxEvent {
                        String aggregateType,
                        String aggregateId,
                        String envelope,
-                       Instant createdAt) {
+                       Instant createdAt,
+                       String traceparent) {
         this.id = id;
         this.exchange = exchange;
         this.routingKey = routingKey;
@@ -75,6 +79,7 @@ public class OutboxEvent {
         this.aggregateId = aggregateId;
         this.envelope = envelope;
         this.createdAt = createdAt;
+        this.traceparent = traceparent;
         this.status = Status.PENDING;
     }
 
@@ -136,5 +141,9 @@ public class OutboxEvent {
 
     public Instant getPublishedAt() {
         return publishedAt;
+    }
+
+    public String getTraceparent() {
+        return traceparent;
     }
 }
