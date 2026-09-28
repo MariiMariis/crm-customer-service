@@ -13,10 +13,10 @@
 
     <groupId>com.pb.crm</groupId>
     <artifactId>pb-crm-platform</artifactId>
-    <version>0.4.0</version>
+    <version>1.0.0</version>
     <packaging>pom</packaging>
     <name>pb-crm-platform</name>
-    <description>Plataforma CRM B2B orientada a eventos com microsservicos Spring Boot e RabbitMQ (Etapa 4)</description>
+    <description>Plataforma CRM B2B orientada a eventos com microsservicos Spring Boot e RabbitMQ (Etapa 5)</description>
 
     <modules>
         <module>crm-commons</module>
