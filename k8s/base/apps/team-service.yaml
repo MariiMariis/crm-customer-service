@@ -53,6 +53,12 @@ spec:
             - configMapRef:
                 name: platform-config
           env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: OTEL_RESOURCE_ATTRIBUTES
+              value: service.namespace=nexo-crm,k8s.namespace.name=crm,k8s.pod.name=$(POD_NAME)
             - name: DB_URL
               value: jdbc:postgresql://postgres-team:5432/team_db
             - name: DB_USERNAME

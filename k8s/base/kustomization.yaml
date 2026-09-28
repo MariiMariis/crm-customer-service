@@ -34,6 +34,7 @@ configMapGenerator:
       - RABBITMQ_HOST=rabbitmq
       - RABBITMQ_PORT=5672
       - PLATFORM_ENVIRONMENT=kubernetes
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector.observability:4318
 
 secretGenerator:
   - name: rabbitmq-credentials

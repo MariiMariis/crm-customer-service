@@ -1,0 +1,48 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: observability
+
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: nexo-crm-observability
+    includeSelectors: false
+
+resources:
+  - k8s/namespace.yaml
+  - k8s/otel-collector.yaml
+  - k8s/tempo.yaml
+  - k8s/loki.yaml
+  - k8s/prometheus.yaml
+  - k8s/grafana.yaml
+  - k8s/rabbitmq-external.yaml
+  - k8s/ingress.yaml
+
+configMapGenerator:
+  - name: otel-collector-config
+    files:
+      - config.yaml=otel-collector/config.yaml
+  - name: tempo-config
+    files:
+      - config.yaml=tempo/config.yaml
+  - name: loki-config
+    files:
+      - config.yaml=loki/config.yaml
+  - name: prometheus-config
+    files:
+      - prometheus.yml=prometheus/prometheus.yml
+  - name: grafana-datasources
+    files:
+      - datasources.yaml=grafana/provisioning/datasources/datasources.yaml
+  - name: grafana-dashboard-providers
+    files:
+      - dashboards.yaml=grafana/provisioning/dashboards/dashboards.yaml
+  - name: grafana-dashboards
+    files:
+      - nexo-crm-overview.json=grafana/dashboards/nexo-crm-overview.json
+
+secretGenerator:
+  - name: grafana-admin
+    literals:
+      - username=admin
+      - password=admin
