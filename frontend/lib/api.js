@@ -38,7 +38,7 @@ async function request(path, { method = "GET", body } = {}) {
             body: body === undefined ? undefined : JSON.stringify(body),
         });
     } catch {
-        throw new ApiError(0, "Não foi possível conectar ao API Gateway (localhost:8080). Verifique se os serviços estão rodando.");
+        throw new ApiError(0, "Não foi possível conectar ao API Gateway. Verifique se os serviços estão rodando.");
     }
     if (response.status === 204) return null;
     const payload = await response.json().catch(() => null);
