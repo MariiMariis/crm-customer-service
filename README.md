@@ -1,128 +1,98 @@
-# Nexo CRM · TP4: Arquitetura orientada a eventos
+# Nexo CRM · TP5: Operação com Docker, Kubernetes e monitoramento
 
-CRM para uma empresa de TI , com leads, empresas, contatos, oportunidades, pipeline e notificações.
-Nesta etapa o sistema foi dividido em microsserviços independentes.
+CRM B2B para uma empresa de TI, com leads, empresas, contatos, oportunidades, pipeline e notificações.
+Microsserviços Spring Boot que se comunicam por eventos no RabbitMQ, rodando em containers orquestrados pelo Kubernetes, com logs e traces centralizados no Grafana.
 
 ---
 
-## Como rodar
+## Endereços
 
-**Pré-requisitos:** JDK 21 · Docker Desktop · Node 20+ · IntelliJ IDEA
-
-| # | Passo | Como |
+| Endereço | O que é | Acesso |
 |---|---|---|
-| 1 | Subir RabbitMQ e os 5 bancos PostgreSQL | `docker compose up -d` |
-| 2 | Instalar o frontend (só na primeira vez) | `cd frontend` e depois `npm install` |
-| 3 | Subir tudo | IntelliJ → run configuration **`Todos os servicos`** |
-| 4 | Carregar dados de exemplo (só na primeira vez) | IntelliJ → **`Carga inicial (seeder)`** |
-| 5 | Usar | <http://localhost:3000> |
+| <http://crm.localhost> | Nexo, a aplicação | Escolha o usuário no topo da tela |
+| <http://grafana.crm.localhost> | Grafana: dashboard, logs (Loki), traces (Tempo) e métricas (Prometheus) | Anônimo, ou `admin` / `admin` |
+| <http://rabbitmq.crm.localhost> | RabbitMQ Management: exchanges, filas, retry e DLQ | `crm` / `crm` |
 
-As run configurations ficam em `.run/` e o IntelliJ as reconhece ao abrir o `pom.xml` da raiz.
-A carga inicial se ignora quando a base já tem dados. Para recomeçar do zero: `docker compose down -v` e depois `docker compose up -d`.
-
-| Endereço | O que é |
-|---|---|
-| <http://localhost:3000> | Nexo (frontend) |
-| <http://localhost:8080/api> | API Gateway |
-| <http://localhost:15672> | RabbitMQ Management (`crm` / `crm`) |
-| Tela **Plataforma** do Nexo | Saúde dos serviços, topologia, filas, DLQ e eventos ao vivo |
-
-**Testes:** `./mvnw verify` (precisa do Docker, porque os testes sobem Postgres e RabbitMQ reais com Testcontainers).
+Os endereços são os mesmos no Kubernetes e no Docker Compose. Como `*.localhost` sempre aponta para a própria máquina, não é preciso editar o arquivo hosts.
 
 ---
 
-## Diagrama da aplicação
+## Como executar
+
+**Pré-requisitos:** Docker Desktop, [kind](https://kind.sigs.k8s.io) e `kubectl`. Os scripts `.sh` rodam no Git Bash.
+
+### Kubernetes (produção simulada)
+
+| # | Comando | O que faz |
+|---|---|---|
+| 1 | `./k8s/scripts/cluster-up.sh` | Cria o cluster kind (1 control-plane + 2 workers) com Ingress NGINX e metrics-server |
+| 2 | `./k8s/scripts/load-local-images.sh` | Opcional: builda as imagens locais. Sem ele, o cluster baixa as do Docker Hub |
+| 3 | `./k8s/scripts/deploy.sh` | Sobe observabilidade, bancos, RabbitMQ, serviços, frontend e a carga inicial |
+| 4 | `./k8s/scripts/smoke-test.sh` | Confere se tudo está no ar |
+
+Para ver o autoscaling, rode `./k8s/scripts/load-test.sh` e acompanhe com `kubectl -n crm get hpa -w`.
+Para apagar o cluster: `kind delete cluster --name nexo-crm`.
+
+### Docker Compose
+
+```bash
+docker compose -f docker-compose.full.yml up -d --build
+```
+
+Sobe a mesma plataforma, com o Grafana, em containers. O Compose e o kind usam a porta 80, então rode um de cada vez.
+
+### Desenvolvimento (IntelliJ)
+
+`docker compose up -d` sobe só o RabbitMQ e os bancos. A run configuration **Todos os servicos** sobe os serviços e o frontend em <http://localhost:3000>.
+
+---
+
+## Arquitetura
 
 ```mermaid
 flowchart TB
-    UI["Nexo<br/>Next.js :3000"] --> GW["API Gateway :8080<br/>CORS · circuit breaker"]
-    CFG["Config Server<br/>:8888"] -.config.-> GW
+    U(("Usuário")) --> ING["Ingress NGINX<br/>crm.localhost"]
+    ING -->|"/"| UI["frontend<br/>Next.js"]
+    ING -->|"/api"| GW["api-gateway<br/>circuit breaker"]
+    CFG["config-server"] -.config.-> GW
 
-    GW --> TEAM["team-service<br/>:8082 + PostgreSQL"]
-    GW --> ACC["accounts-service<br/>:8083 + PostgreSQL"]
-    GW --> CAT["catalog-service<br/>:8084 + PostgreSQL"]
-    GW --> SALES["sales-service<br/>:8085 + PostgreSQL"]
-    GW --> NOTIF["notification-service<br/>:8081 + PostgreSQL"]
+    GW --> TEAM["team-service"] --> DB1[("PostgreSQL")]
+    GW --> ACC["accounts-service"] --> DB2[("PostgreSQL")]
+    GW --> CAT["catalog-service"] --> DB3[("PostgreSQL")]
+    GW --> SALES["sales-service"] --> DB4[("PostgreSQL")]
+    GW --> NOTIF["notification-service"] --> DB5[("PostgreSQL")]
 
-    TEAM <--> MQ{{"RabbitMQ :5672<br/>exchanges topic · filas · retry · DLQ"}}
-    ACC <--> MQ
-    CAT <--> MQ
-    SALES <--> MQ
-    NOTIF <--> MQ
+    TEAM & ACC & CAT & SALES & NOTIF <--> MQ{{"RabbitMQ<br/>eventos · retry · DLQ"}}
+
+    subgraph OBS["namespace observability"]
+        OTEL["OpenTelemetry Collector"] --> TEMPO["Tempo<br/>traces"]
+        OTEL --> LOKI["Loki<br/>logs"]
+        OTEL --> PROM["Prometheus<br/>métricas"]
+        TEMPO & LOKI & PROM --> GRAF["Grafana"]
+    end
+
+    GW & TEAM & ACC & CAT & SALES & NOTIF -. OTLP .-> OTEL
 ```
 
-### Quem publica e quem consome
-
-```mermaid
-flowchart LR
-    T(["team.events"]) -->|salesrep.*| ACC["accounts"]
-    T -->|salesrep.*| SALES["sales"]
-    T -->|salesrep.*| NOTIF["notification"]
-
-    C(["catalog.events"]) -->|product.*| SALES
-
-    A(["accounts.events"]) -->|company.* · contact.*| SALES
-    A -->|lead-account.provisioned / rejected| SALES
-
-    S(["sales.events"]) -->|lead.conversion-requested| ACC
-    S -->|opportunity.won| ACC
-    S -->|lead.assigned · discount · won · lost| NOTIF
-
-    N(["notification.events"]) -->|dispatch-requested| NOTIF
-```
-
----
-
-## Serviços
-
-| Serviço | Porta | Responsabilidade | Publica em |
-|---|---|---|---|
-| **team-service** | 8082 | Vendedores, gestores e equipes | `team.events` |
-| **accounts-service** | 8083 | Empresas (CNPJ) e contatos; vira a empresa em **cliente** quando uma oportunidade é ganha | `accounts.events` |
-| **catalog-service** | 8084 | Produtos de software, hardware e serviços, com SKU, preço e desconto máximo | `catalog.events` |
-| **sales-service** | 8085 | Leads com score, oportunidades com itens e MRR, aprovação de desconto, pipeline e atividades | `sales.events` |
-| **notification-service** | 8081 | Caixa de entrada e e-mail (simulado) a partir dos eventos de vendas | `notification.events` |
-| **api-gateway** | 8080 | Porta única da API, CORS, circuit breaker por rota e saúde agregada | — |
-| **config-server** | 8888 | Configuração centralizada (Spring Cloud Config) | — |
-| **crm-commons** | — | Biblioteca compartilhada: outbox, consumidor idempotente, retry/DLQ, auditoria e erros | — |
-| **crm-seeder** | — | Carga inicial realista feita pela API do gateway | — |
-| **frontend** | 3000 | Interface do Nexo | — |
-
----
-
-## Decisões de arquitetura
-
-- **Um banco por serviço.** Nenhum serviço lê a base de outro, e os dados de que precisa chegam por evento.
-- **DDD em camadas** (`domain` · `application` · `infrastructure` · `api`), com domínio puro e sem dependência de Spring ou JPA.
-- **Um exchange `topic` por serviço.** Cada consumidor cria a própria fila e assina só as routing keys de que precisa.
-- **Transactional outbox.** O evento é gravado na mesma transação do dado e um relay publica no RabbitMQ com *publisher confirms*, então nenhum evento se perde.
-- **Consumidor idempotente.** A tabela `processed_events` ignora mensagens repetidas.
-- **Retry com atraso e DLQ.** Três filas de espera (5s, 30s e 2min) antes de a mensagem ir para a `.dlq`, de onde pode ser reprocessada pela tela Plataforma.
-- **Réplicas locais por snapshot.** O sales-service tem cópias de vendedores, produtos, empresas e contatos para funcionar mesmo com os outros serviços fora do ar.
-- **Saga coreografada** na conversão de lead, com compensação e timeout de 15 min.
-- **Contratos de evento duplicados em cada serviço,** sem um módulo compartilhado de contratos, para não acoplar os deploys.
-- **Resiliência no gateway.** Circuit breaker com resposta de fallback quando um serviço cai.
-
-### Padrões de mensagem usados
-
-| Padrão | Onde |
+| Serviço | Responsabilidade |
 |---|---|
-| Publish/subscribe | Eventos de `sales.events` consumidos ao mesmo tempo por accounts e notification |
-| Event-carried state transfer | Réplicas de vendedores, produtos, empresas e contatos no sales-service |
-| Saga coreografada (request/reply por eventos) | `sales.lead.conversion-requested` → `accounts.lead-account.provisioned` / `rejected` |
-| Competing consumers (work queue) | `notification.dispatch`, com 2 a 6 workers enviando e-mails em paralelo |
-| Retry + dead letter queue | Todas as filas de consumo (`.retry.1..3` e `.dlq`) |
-| Transactional outbox | Todos os serviços produtores |
+| **team-service** | Vendedores, gestores e equipes |
+| **accounts-service** | Empresas e contatos; a empresa vira cliente quando uma oportunidade é ganha |
+| **catalog-service** | Produtos de software, hardware e serviços |
+| **sales-service** | Leads com score, oportunidades, pipeline e atividades |
+| **notification-service** | Alertas comerciais e e-mails simulados |
+| **api-gateway** | Entrada única da API, circuit breaker e saúde agregada |
+| **config-server** | Configuração centralizada |
 
----
+- **Um banco por serviço.** Os dados de outros serviços chegam por evento e ficam em réplicas locais.
+- **Transactional outbox.** O evento é gravado junto com o dado e publicado no RabbitMQ com confirmação, carregando o contexto do trace.
+- **Kubernetes:**
+  - Bancos e RabbitMQ rodam em StatefulSets com volume.
+  - Os serviços têm probes de saúde e rolling update sem indisponibilidade.
+  - Gateway, sales, notification e frontend têm HPA de 2 a 5 réplicas por CPU.
+- **Monitoramento:** o agent do OpenTelemetry instrumenta HTTP, banco e RabbitMQ sem código. O dashboard **Nexo CRM - Visão geral** mostra tráfego, erros, latência, JVM e filas. Do log se vai ao trace, e do trace aos logs.
+- **CI/CD (GitHub Actions):**
+  - O `ci.yml` roda build, testes com Testcontainers, cobertura, imagens e validação dos manifests.
+  - O `cd.yml` publica as imagens no Docker Hub (`mariimariis/crm-*`), faz o deploy num cluster kind dentro do Actions e roda o smoke test.
 
-## EDA: prós e contras
-
-| Prós | Contras |
-|---|---|
-| **Baixo acoplamento:** quem publica não conhece quem consome | **Consistência eventual:** os dados levam alguns instantes para chegar em todos os serviços |
-| **Resiliência:** um serviço fora do ar não derruba os outros e as mensagens esperam na fila | **Depuração mais difícil:** o fluxo fica espalhado entre serviços e filas |
-| **Escalabilidade:** é possível adicionar consumidores sem mudar o produtor | **Mais infraestrutura:** broker, filas de retry e DLQ para operar e monitorar |
-| **Evolução:** um novo requisito vira um novo consumidor, sem alterar o que já existe | **Duplicidade e ordem:** é preciso tratar mensagens repetidas e fora de ordem |
-| **Auditoria natural:** os eventos formam o histórico do que aconteceu | **Contratos de evento:** mudanças no formato exigem versionamento cuidadoso |
-| **Absorve picos:** a fila segura a carga enquanto os consumidores processam | **Transações distribuídas:** exigem sagas e compensações em vez de um único commit |
+**Testes:** `./mvnw verify` (precisa do Docker).
