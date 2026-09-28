@@ -1,0 +1,34 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: crm-seeder
+  labels:
+    app.kubernetes.io/name: crm-seeder
+    app.kubernetes.io/component: job
+spec:
+  backoffLimit: 4
+  ttlSecondsAfterFinished: 600
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: crm-seeder
+        app.kubernetes.io/component: job
+    spec:
+      restartPolicy: OnFailure
+      initContainers:
+        - name: wait-platform
+          image: busybox:1.37
+          command: ["sh", "-c", "until wget -qO- http://api-gateway:8080/api/platform/health | grep -q '\"status\":\"UP\",\"checkedAt\"'; do echo aguardando plataforma; sleep 5; done"]
+      containers:
+        - name: crm-seeder
+          image: mariimariis/crm-seeder:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: GATEWAY_URL
+              value: http://api-gateway:8080
+          resources:
+            requests:
+              cpu: 50m
+              memory: 256Mi
+            limits:
+              memory: 512Mi

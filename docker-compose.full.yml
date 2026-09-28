@@ -1,0 +1,178 @@
+name: pb-crm
+
+include:
+  - docker-compose.yml
+
+x-java-service: &java-service
+  restart: unless-stopped
+  depends_on: &java-depends
+    rabbitmq:
+      condition: service_healthy
+    config-server:
+      condition: service_healthy
+
+x-java-env: &java-env
+  CONFIG_SERVER_URL: http://config-server:8888
+  RABBITMQ_HOST: rabbitmq
+  RABBITMQ_PORT: "5672"
+  RABBITMQ_USERNAME: ${RABBITMQ_USER:-crm}
+  RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-crm}
+  PLATFORM_ENVIRONMENT: docker
+
+services:
+  config-server:
+    image: ${REGISTRY:-mariimariis}/crm-config-server:${TAG:-latest}
+    build:
+      context: .
+      dockerfile: config-server/Dockerfile
+    container_name: pb-crm-config-server
+    restart: unless-stopped
+
+  team-service:
+    <<: *java-service
+    image: ${REGISTRY:-mariimariis}/crm-team-service:${TAG:-latest}
+    build:
+      context: .
+      dockerfile: team-service/Dockerfile
+    container_name: pb-crm-team-service
+    depends_on:
+      <<: *java-depends
+      postgres-team:
+        condition: service_healthy
+    environment:
+      <<: *java-env
+      DB_URL: jdbc:postgresql://postgres-team:5432/team_db
+      DB_USERNAME: ${TEAM_DB_USER:-team}
+      DB_PASSWORD: ${TEAM_DB_PASSWORD:-team}
+
+  accounts-service:
+    <<: *java-service
+    image: ${REGISTRY:-mariimariis}/crm-accounts-service:${TAG:-latest}
+    build:
+      context: .
+      dockerfile: accounts-service/Dockerfile
+    container_name: pb-crm-accounts-service
+    depends_on:
+      <<: *java-depends
+      postgres-accounts:
+        condition: service_healthy
+    environment:
+      <<: *java-env
+      DB_URL: jdbc:postgresql://postgres-accounts:5432/accounts_db
+      DB_USERNAME: ${ACCOUNTS_DB_USER:-accounts}
+      DB_PASSWORD: ${ACCOUNTS_DB_PASSWORD:-accounts}
+
+  catalog-service:
+    <<: *java-service
+    image: ${REGISTRY:-mariimariis}/crm-catalog-service:${TAG:-latest}
+    build:
+      context: .
+      dockerfile: catalog-service/Dockerfile
+    container_name: pb-crm-catalog-service
+    depends_on:
+      <<: *java-depends
+      postgres-catalog:
+        condition: service_healthy
+    environment:
+      <<: *java-env
+      DB_URL: jdbc:postgresql://postgres-catalog:5432/catalog_db
+      DB_USERNAME: ${CATALOG_DB_USER:-catalog}
+      DB_PASSWORD: ${CATALOG_DB_PASSWORD:-catalog}
+
+  sales-service:
+    <<: *java-service
+    image: ${REGISTRY:-mariimariis}/crm-sales-service:${TAG:-latest}
+    build:
+      context: .
+      dockerfile: sales-service/Dockerfile
+    container_name: pb-crm-sales-service
+    depends_on:
+      <<: *java-depends
+      postgres-sales:
+        condition: service_healthy
+    environment:
+      <<: *java-env
+      DB_URL: jdbc:postgresql://postgres-sales:5432/sales_db
+      DB_USERNAME: ${SALES_DB_USER:-sales}
+      DB_PASSWORD: ${SALES_DB_PASSWORD:-sales}
+
+  notification-service:
+    <<: *java-service
+    image: ${REGISTRY:-mariimariis}/crm-notification-service:${TAG:-latest}
+    build:
+      context: .
+      dockerfile: notification-service/Dockerfile
+    container_name: pb-crm-notification-service
+    depends_on:
+      <<: *java-depends
+      postgres-notification:
+        condition: service_healthy
+    environment:
+      <<: *java-env
+      DB_URL: jdbc:postgresql://postgres-notification:5432/notification_db
+      DB_USERNAME: ${NOTIFICATION_DB_USER:-notification}
+      DB_PASSWORD: ${NOTIFICATION_DB_PASSWORD:-notification}
+      FRONTEND_URL: http://localhost
+
+  api-gateway:
+    image: ${REGISTRY:-mariimariis}/crm-api-gateway:${TAG:-latest}
+    build:
+      context: .
+      dockerfile: api-gateway/Dockerfile
+    container_name: pb-crm-api-gateway
+    restart: unless-stopped
+    depends_on:
+      config-server:
+        condition: service_healthy
+    environment:
+      CONFIG_SERVER_URL: http://config-server:8888
+      TEAM_SERVICE_URL: http://team-service:8082
+      ACCOUNTS_SERVICE_URL: http://accounts-service:8083
+      CATALOG_SERVICE_URL: http://catalog-service:8084
+      SALES_SERVICE_URL: http://sales-service:8085
+      NOTIFICATION_SERVICE_URL: http://notification-service:8081
+      ALLOWED_ORIGINS: http://localhost
+
+  frontend:
+    image: ${REGISTRY:-mariimariis}/crm-frontend:${TAG:-latest}
+    build:
+      context: frontend
+      args:
+        NEXT_PUBLIC_API_URL: /api
+    container_name: pb-crm-frontend
+    restart: unless-stopped
+
+  edge:
+    image: nginx:1.27-alpine
+    container_name: pb-crm-edge
+    restart: unless-stopped
+    depends_on:
+      - frontend
+      - api-gateway
+    volumes:
+      - ./docker/edge/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "80:80"
+
+  seeder:
+    image: ${REGISTRY:-mariimariis}/crm-seeder:${TAG:-latest}
+    build:
+      context: .
+      dockerfile: crm-seeder/Dockerfile
+    container_name: pb-crm-seeder
+    restart: "no"
+    depends_on:
+      api-gateway:
+        condition: service_healthy
+      team-service:
+        condition: service_healthy
+      accounts-service:
+        condition: service_healthy
+      catalog-service:
+        condition: service_healthy
+      sales-service:
+        condition: service_healthy
+      notification-service:
+        condition: service_healthy
+    environment:
+      GATEWAY_URL: http://api-gateway:8080

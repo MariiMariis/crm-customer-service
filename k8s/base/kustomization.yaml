@@ -1,0 +1,82 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: crm
+
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: nexo-crm
+    includeSelectors: false
+
+resources:
+  - namespace.yaml
+  - infra/rabbitmq.yaml
+  - infra/postgres-team.yaml
+  - infra/postgres-accounts.yaml
+  - infra/postgres-catalog.yaml
+  - infra/postgres-sales.yaml
+  - infra/postgres-notification.yaml
+  - apps/config-server.yaml
+  - apps/team-service.yaml
+  - apps/accounts-service.yaml
+  - apps/catalog-service.yaml
+  - apps/sales-service.yaml
+  - apps/notification-service.yaml
+  - apps/api-gateway.yaml
+  - apps/frontend.yaml
+  - ingress.yaml
+  - seeder-job.yaml
+
+configMapGenerator:
+  - name: platform-config
+    literals:
+      - CONFIG_SERVER_URL=http://config-server:8888
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - PLATFORM_ENVIRONMENT=kubernetes
+
+secretGenerator:
+  - name: rabbitmq-credentials
+    literals:
+      - username=crm
+      - password=crm
+  - name: team-db-credentials
+    literals:
+      - username=team
+      - password=team
+  - name: accounts-db-credentials
+    literals:
+      - username=accounts
+      - password=accounts
+  - name: catalog-db-credentials
+    literals:
+      - username=catalog
+      - password=catalog
+  - name: sales-db-credentials
+    literals:
+      - username=sales
+      - password=sales
+  - name: notification-db-credentials
+    literals:
+      - username=notification
+      - password=notification
+
+images:
+  - name: mariimariis/crm-config-server
+    newTag: latest
+  - name: mariimariis/crm-team-service
+    newTag: latest
+  - name: mariimariis/crm-accounts-service
+    newTag: latest
+  - name: mariimariis/crm-catalog-service
+    newTag: latest
+  - name: mariimariis/crm-sales-service
+    newTag: latest
+  - name: mariimariis/crm-notification-service
+    newTag: latest
+  - name: mariimariis/crm-api-gateway
+    newTag: latest
+  - name: mariimariis/crm-frontend
+    newTag: latest
+  - name: mariimariis/crm-seeder
+    newTag: latest

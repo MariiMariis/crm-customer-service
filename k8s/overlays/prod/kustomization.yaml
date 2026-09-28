@@ -1,0 +1,69 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: crm
+
+resources:
+  - ../../base
+  - hpa.yaml
+  - pdb.yaml
+
+configMapGenerator:
+  - name: platform-config
+    behavior: merge
+    literals:
+      - PLATFORM_ENVIRONMENT=production
+
+patches:
+  - target:
+      kind: Deployment
+      name: (api-gateway|sales-service|notification-service|frontend)
+    patch: |-
+      - op: remove
+        path: /spec/replicas
+  - target:
+      kind: Deployment
+      labelSelector: app.kubernetes.io/component=backend
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources
+        value:
+          requests:
+            cpu: 250m
+            memory: 512Mi
+          limits:
+            cpu: "1"
+            memory: 768Mi
+  - target:
+      kind: Deployment
+      name: frontend
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources
+        value:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 384Mi
+
+images:
+  - name: mariimariis/crm-config-server
+    newTag: latest
+  - name: mariimariis/crm-team-service
+    newTag: latest
+  - name: mariimariis/crm-accounts-service
+    newTag: latest
+  - name: mariimariis/crm-catalog-service
+    newTag: latest
+  - name: mariimariis/crm-sales-service
+    newTag: latest
+  - name: mariimariis/crm-notification-service
+    newTag: latest
+  - name: mariimariis/crm-api-gateway
+    newTag: latest
+  - name: mariimariis/crm-frontend
+    newTag: latest
+  - name: mariimariis/crm-seeder
+    newTag: latest

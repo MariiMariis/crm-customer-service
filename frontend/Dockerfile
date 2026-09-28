@@ -23,5 +23,5 @@ COPY --from=build --chown=crm:crm /app/.next/standalone ./
 COPY --from=build --chown=crm:crm /app/.next/static ./.next/static
 USER crm
 EXPOSE 3000
-HEALTHCHECK --interval=15s --timeout=3s --start-period=20s --retries=5 CMD wget -qO- http://localhost:3000/ >/dev/null || exit 1
+HEALTHCHECK --interval=15s --timeout=3s --start-period=20s --retries=5 CMD wget -qO- http://127.0.0.1:3000/ >/dev/null || exit 1
 CMD ["node", "server.js"]
