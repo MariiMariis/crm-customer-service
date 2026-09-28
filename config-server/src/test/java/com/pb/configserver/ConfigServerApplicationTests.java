@@ -32,7 +32,7 @@ class ConfigServerApplicationTests {
     void deveServirConfiguracaoCompartilhadaDeMensageria() throws Exception {
         mockMvc.perform(get("/sales-service/default"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.propertySources[*].source['spring.rabbitmq.username']").value(hasItem("crm")))
+                .andExpect(jsonPath("$.propertySources[*].source['spring.rabbitmq.host']").value(hasItem("${RABBITMQ_HOST:localhost}")))
                 .andExpect(jsonPath("$.propertySources[*].source['crm.messaging.retry.delays']").value(hasItem("5s,30s,2m")));
     }
 
