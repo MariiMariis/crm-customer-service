@@ -151,7 +151,7 @@ jobs:
 
       - name: Renderiza e valida o Kubernetes
         run: |
-          for target in k8s/overlays/prod observability; do
+          for target in k8s/overlays/prod observability observability-splunk; do
             echo "::group::$target"
             kubectl kustomize "$target" > rendered.yaml
             kubeconform -strict -summary -kubernetes-version 1.33.0 rendered.yaml
@@ -162,3 +162,4 @@ jobs:
         run: |
           docker compose -f docker-compose.yml config --quiet
           docker compose -f docker-compose.full.yml config --quiet
+          SPLUNK_ACCESS_TOKEN=ci SPLUNK_REALM=ci docker compose -f docker-compose.full.yml -f docker-compose.splunk.yml config --quiet

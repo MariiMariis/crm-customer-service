@@ -1,0 +1,16 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: observability
+
+resources:
+  - ../observability
+
+configMapGenerator:
+  - name: otel-collector-config
+    behavior: merge
+    files:
+      - splunk.yaml=otel-collector.yaml
+
+patches:
+  - path: otel-collector-patch.yaml

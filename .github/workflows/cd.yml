@@ -123,6 +123,20 @@ jobs:
           done
           grep -A1 "name: ${REGISTRY_NAMESPACE}" kustomization.yaml
 
+      - name: Secret do Splunk Observability
+        env:
+          SPLUNK_ACCESS_TOKEN: ${{ secrets.SPLUNK_ACCESS_TOKEN }}
+          SPLUNK_REALM: ${{ secrets.SPLUNK_REALM }}
+        run: |
+          if [ -z "$SPLUNK_ACCESS_TOKEN" ] || [ -z "$SPLUNK_REALM" ]; then
+            echo "::notice::Secrets do Splunk ausentes, deploy apenas com o Grafana LGTM"
+            exit 0
+          fi
+          kubectl create namespace observability --dry-run=client -o yaml | kubectl apply -f -
+          kubectl -n observability create secret generic splunk-observability \
+            --from-literal=splunk_observability_access_token="$SPLUNK_ACCESS_TOKEN" \
+            --from-literal=realm="$SPLUNK_REALM"
+
       - name: Deploy da observabilidade e da plataforma
         run: ./k8s/scripts/deploy.sh prod
 

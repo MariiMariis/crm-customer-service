@@ -4,7 +4,20 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 OVERLAY="${1:-prod}"
 
-kubectl apply -k "$ROOT/observability"
+OBSERVABILITY="$ROOT/observability"
+if kubectl -n observability get secret splunk-observability >/dev/null 2>&1; then
+  SPLUNK_REALM="$(kubectl -n observability get secret splunk-observability -o jsonpath='{.data.realm}' | base64 -d)"
+  helm repo add splunk-otel-collector-chart https://signalfx.github.io/splunk-otel-collector-chart --force-update
+  helm upgrade --install splunk-otel-collector splunk-otel-collector-chart/splunk-otel-collector \
+    --version 0.161.0 \
+    --namespace observability \
+    --values "$ROOT/observability-splunk/values.yaml" \
+    --set splunkObservability.realm="$SPLUNK_REALM" \
+    --wait --timeout 10m
+  OBSERVABILITY="$ROOT/observability-splunk"
+fi
+
+kubectl apply -k "$OBSERVABILITY"
 kubectl -n observability rollout status deployment/otel-collector --timeout=300s
 
 kubectl -n crm delete job crm-seeder --ignore-not-found

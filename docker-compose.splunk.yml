@@ -1,0 +1,18 @@
+services:
+  otel-collector:
+    command: ["--config=/etc/otelcol/config.yaml", "--config=/etc/otelcol/splunk.yaml"]
+    environment:
+      SPLUNK_OTLP_ENDPOINT: splunk-otel-collector:4317
+    volumes:
+      - ./observability-splunk/otel-collector.yaml:/etc/otelcol/splunk.yaml:ro
+    depends_on:
+      - splunk-otel-collector
+
+  splunk-otel-collector:
+    image: quay.io/signalfx/splunk-otel-collector:0.161.0
+    container_name: pb-crm-splunk-otel-collector
+    restart: unless-stopped
+    environment:
+      SPLUNK_ACCESS_TOKEN: ${SPLUNK_ACCESS_TOKEN:?defina SPLUNK_ACCESS_TOKEN no .env}
+      SPLUNK_REALM: ${SPLUNK_REALM:?defina SPLUNK_REALM no .env}
+      SPLUNK_MEMORY_TOTAL_MIB: "512"

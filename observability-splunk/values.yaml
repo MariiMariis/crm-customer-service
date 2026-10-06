@@ -1,0 +1,19 @@
+clusterName: nexo-crm
+environment: kubernetes
+
+splunkObservability:
+  metricsEnabled: true
+  tracesEnabled: true
+
+secret:
+  create: false
+  name: splunk-observability
+
+agent:
+  controlPlaneMetrics:
+    controllerManager:
+      enabled: false
+    scheduler:
+      enabled: false
+    proxy:
+      enabled: false
