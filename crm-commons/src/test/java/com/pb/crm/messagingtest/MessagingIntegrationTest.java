@@ -96,9 +96,11 @@ class MessagingIntegrationTest {
         assertThat(envelope.payload().get("name").asText()).isEqualTo("Primeiro");
         assertThat(listener.actors()).containsExactly("vendedora.ana");
 
-        OutboxEvent stored = outboxRepository.findById(envelope.eventId()).orElseThrow();
-        assertThat(stored.getStatus()).isEqualTo(OutboxEvent.Status.PUBLISHED);
-        assertThat(stored.getPublishedAt()).isNotNull();
+        await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
+            OutboxEvent stored = outboxRepository.findById(envelope.eventId()).orElseThrow();
+            assertThat(stored.getStatus()).isEqualTo(OutboxEvent.Status.PUBLISHED);
+            assertThat(stored.getPublishedAt()).isNotNull();
+        });
     }
 
     @Test

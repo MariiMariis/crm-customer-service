@@ -12,12 +12,14 @@ fi
 kubectl config use-context "kind-$CLUSTER"
 
 kubectl apply -f "https://raw.githubusercontent.com/kubernetes/ingress-nginx/$INGRESS_NGINX_VERSION/deploy/static/provider/kind/deploy.yaml"
+kubectl -n ingress-nginx patch deployment ingress-nginx-controller --type=merge \
+  -p '{"spec":{"template":{"spec":{"nodeSelector":{"ingress-ready":"true","kubernetes.io/os":"linux"}}}}}'
 kubectl apply -f "https://github.com/kubernetes-sigs/metrics-server/releases/download/$METRICS_SERVER_VERSION/components.yaml"
 if ! kubectl -n kube-system get deployment metrics-server -o jsonpath='{.spec.template.spec.containers[0].args}' | grep -q kubelet-insecure-tls; then
   kubectl -n kube-system patch deployment metrics-server --type=json \
     -p '[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--kubelet-insecure-tls"}]'
 fi
 
-kubectl -n ingress-nginx wait --for=condition=ready pod -l app.kubernetes.io/component=controller --timeout=180s
+kubectl -n ingress-nginx rollout status deployment/ingress-nginx-controller --timeout=180s
 kubectl -n kube-system rollout status deployment/metrics-server --timeout=180s
 echo "Cluster $CLUSTER pronto"
